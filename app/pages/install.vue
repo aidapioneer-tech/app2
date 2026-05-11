@@ -41,9 +41,9 @@ async function bindPlacement($b24: B24Frame, appUrl: string): Promise<void> {
 }
 
 function getBaseUrl(): string {
-  const currentUrl = window.location.href
-  const lastSlashIndex = currentUrl.lastIndexOf('/')
-  return currentUrl.substring(0, lastSlashIndex + 1)
+  const url = new URL(window.location.href)
+  url.pathname = url.pathname.replace(/\/install\/?$/, '/')
+  return url.origin + url.pathname
 }
 
 onMounted(async () => {
