@@ -186,21 +186,6 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 ❌ Cat 3 (подрядчик-вью) не проверена end-to-end.
 ❌ Permission-фильтр в DealMoney.php — TODO.
 
-## Доработки от пользователя (поверх первой версии)
-
-Что было добавлено вручную после первой коммита агента:
-
-1. **Bumped deps**: `@bitrix24/b24ui-nuxt` 2.6 → 2.7.1, `@bitrix24/b24jssdk(-nuxt)` 1.0.5 → 1.1.0.
-2. **`vite.optimizeDeps.include`** в `nuxt.config.ts` — pre-bundle для `b24icons-vue/main/CloudErrorIcon` и `b24jssdk`. Ускоряет dev-старт.
-3. **`NUXT_APP_BASE_URL` env-переменная** + правило формирования (см. выше).
-4. **Loader пока B24 инициализируется**: `app/components/home/HomeLoader.vue` (центрованный `LoaderClockIcon`). Layout `clear.vue` через `inject('isLoading')` показывает его до завершения `b24Instance.init()`.
-5. **`install.vue` упрощён**: убран mock-режим, `placement.bind` всегда переустанавливается через `callBatch(unbind + bind)`, `appUrl` берётся из `window.location` через `getBaseUrl()` (отрезает `/install`), а не из `runtimeConfig`.
-6. **`PLACEMENT_TITLE`** содержит маркер окружения: `[devSh]/[prodSh] Деньги` — чтобы не путать dev-вкладку с prod на одном портале.
-7. **Иконки**: `outline/ChevronDownIcon` заменена на `actions/ChevronDownIcon`, `outline/ChevronRightIcon` на `outline/ChevronRightLIcon` — в новой версии b24icons первые отсутствуют.
-8. **`lint:fix`** скрипт в `package.json`.
-
-Эти решения теперь — норма проекта. Не откатывать.
-
 ## Известные дыры в коде
 
 1. **Permissions не проверяются** в DealMoney.php — `$factory->getItem($dealId)` тянет сделку без фильтра по правам пользователя. Заменить на `getItemsFilteredByPermissions(['filter'=>['=ID'=>$dealId]])` или использовать `getUserPermissions()->canRead()`.
@@ -210,13 +195,39 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 5. **`isOverdue` в PaymentsTable.vue** считает `today.toISOString()` в локальной зоне — для пограничных случаев в timezone ≠ UTC может ошибаться на день.
 6. **Currency mismatch** — клиент BYN, подрядчик в USD/EUR/RUB? Сейчас totals считаются арифметически без конверсии. `AData::getPaymentsSum` имеет конверсию через `CCurrencyRates::ConvertCurrency`, но `buildPaymentRows` в новом controller — нет. Проверить и при необходимости добавить.
 
-## Конвенции кода
+## Конвенции проекта
 
-- **PHP**: declare(strict_types=1), namespace `\Shef\ReportBuilder\Controllers`, наследоваться от `\Bitrix\Main\Engine\Controller`. Action назван `getAction()` чтобы REST-метод был `dealMoney.get`.
+### Код
+
+- **PHP**: `declare(strict_types=1)`, namespace `\Shef\ReportBuilder\Controllers`, наследоваться от `\Bitrix\Main\Engine\Controller`. Action назван `getAction()` чтобы REST-метод был `dealMoney.get`.
 - **TS/Vue**: Composition API, `<script setup lang="ts">`. Без emoji в UI. Числа форматировать через `formatMoney` (split + space-separator). Без `replace('белорусских рублей', 'бел. руб')` костыля.
 - **i18n**: только `ru`. Все тексты в шаблонах захардкожены — i18n-ключи можно не использовать.
 - **Стили**: tailwind utility classes + `@bitrix24/b24ui-nuxt` компоненты (`B24Card`, `B24Badge`, `B24Progress`, `B24Skeleton`, `B24Alert`). CSS-переменные дизайн-системы — `var(--ui-text-muted)`, `var(--ui-bg-elevated)`, `var(--ui-color-accent-main-success/alert)`.
 - **Цветовой код**: только зелёный (получено / оплачено), красный (просрочено), серый (ожидание / muted). Без других акцентов.
+
+### Зависимости
+
+- Версии `@bitrix24/b24ui-nuxt`, `@bitrix24/b24jssdk`, `@bitrix24/b24jssdk-nuxt`, `@bitrix24/b24icons-vue` — **всегда актуальные**. Не пинить.
+- При апгрейде b24-пакетов проверять имена иконок: в b24icons 2.7 организация изменилась — для интерактивных стрелок использовать `actions/*`, для контурных — `outline/*`. Постфикс `L` (`ChevronRightLIcon`) — large-вариант.
+- Тяжёлые b24-зависимости попадают в `vite.optimizeDeps.include` (`nuxt.config.ts`) — иначе dev-старт долгий. Текущий список: `b24icons-vue/main/CloudErrorIcon`, `b24jssdk`. При добавлении новых b24-импортов с медленным первым resolve — расширять.
+
+### URL и base path
+
+- Билд приложения **переносим между окружениями** — не должен зависеть от хардкоженных URL. Развёртывание управляется двумя env-переменными (см. секцию «Конфигурация окружения»):
+  - `NUXT_PUBLIC_SITE_URL` — хост.
+  - `NUXT_APP_BASE_URL` — sub-path (`/<purpose-slug>-<entropy>`).
+- В рантайме базовый URL определяется из `window.location`, не из `runtimeConfig.public.siteUrl`. Так живут и dev (ngrok-тоннель с непредсказуемым хостом), и prod без пересборки. Хелпер `getBaseUrl()` в `install.vue` — образец.
+
+### Установка / placement
+
+- Установка приложения **идемпотентна**: `callBatch([placement.unbind, placement.bind])` всегда переустанавливает. Не проверяем «есть ли уже». Если URL или title изменились — всё равно подхватим.
+- **Mock-режим в install.vue не делаем** — приложение всегда работает только во встройке Битрикс24. Если фрейм недоступен, страница ошибки, а не имитация. Тестируем через dev-портал.
+- `PLACEMENT_TITLE` всегда содержит маркер `[devSh]` / `[prodSh]` через `import.meta.dev` — чтобы dev- и prod-вкладки сосуществовали на одном портале без путаницы. `Sh` = Shef (вендорный префикс, согласован с серверной частью: `shef.aidapioneerby`, `[sh] Оплаты`, и т.п.). Использовать во всех app-ах вендора.
+
+### UX / lifecycle
+
+- B24 init не моментальный. Корневой layout (`app/layouts/clear.vue`) **обязан показывать loader** пока `isLoading === true`. Канал — `provide('isLoading')` в `app/app.vue` → `inject('isLoading')` в layout. Loader — `app/components/home/HomeLoader.vue` (центрованный `LoaderClockIcon` на `h-screen`).
+- Пустой экран до инициализации = баг.
 
 ## Как локально разрабатывать
 
@@ -244,6 +255,9 @@ BX24.callMethod('shef:reportbuilder.api.dealMoney.get', { dealId: 12345 }, r => 
 - Не делать переключатель языка / dark-mode / settings — экран одностраничный.
 - Не дублировать формулы прибыли в TS — всё считает сервер.
 - Не звать `crm.item.payment.list` / `crm.item.list(1044)` напрямую с фронта — есть один эндпоинт.
+- Не возвращать mock/демо-режим в `install.vue` (конвенция вендора).
+- Не использовать `runtimeConfig.public.siteUrl` для определения собственного URL в рантайме — брать из `window.location`.
+- Не оптимизировать `placement.bind` через предварительную проверку существования — всегда unbind+bind.
 
 ## Ссылки на исходники документации
 
