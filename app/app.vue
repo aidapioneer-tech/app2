@@ -33,6 +33,7 @@ provide('isLoading', readonly(isLoading))
 
 onMounted(async () => {
   const result: Result = await b24Instance.init()
+
   if (!result.isSuccess) {
     toast.add({
       title: 'Ошибка',

@@ -3,8 +3,8 @@ import type { ContractorBlock as ContractorBlockType } from '~/types'
 import { ref, computed } from 'vue'
 import PaymentsTable from './PaymentsTable.vue'
 import { formatMoney, formatPercent } from './format'
-import ChevronDownIcon from '@bitrix24/b24icons-vue/outline/ChevronDownIcon'
-import ChevronRightIcon from '@bitrix24/b24icons-vue/outline/ChevronRightIcon'
+import ChevronDownIcon from '@bitrix24/b24icons-vue/actions/ChevronDownIcon'
+import ChevronRightLIcon from '@bitrix24/b24icons-vue/outline/ChevronRightLIcon'
 
 const props = defineProps<{
   block: ContractorBlockType
@@ -19,9 +19,9 @@ const paidPercent = computed(() => {
 
 const badgeMeta = computed<{ label: string, color: string }>(() => {
   switch (props.block.badge) {
-    case 'paidByAct': return { label: 'Оплачено', color: 'air-primary-success' }
-    case 'partial':   return { label: 'Частично',  color: 'air-primary-warning' }
-    default:          return { label: 'Не начато', color: 'air-secondary' }
+    case 'paidByAct': return { label: 'Оплачено', color: 'air-primary-success' as const }
+    case 'partial': return { label: 'Частично', color: 'air-primary-warning' as const }
+    default: return { label: 'Не начато', color: 'air-secondary' as const }
   }
 })
 </script>
@@ -34,7 +34,7 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
         class="w-full flex items-center gap-3 p-4 text-left hover:bg-(--ui-bg-elevated) transition-colors"
         @click="open = !open"
       >
-        <component :is="open ? ChevronDownIcon : ChevronRightIcon" class="size-4 shrink-0 text-(--ui-text-muted)" />
+        <component :is="open ? ChevronDownIcon : ChevronRightLIcon" class="size-4 shrink-0 text-(--ui-text-muted)" />
 
         <div class="flex flex-col min-w-0 flex-1">
           <span class="text-sm font-medium truncate">{{ block.companyTitle || block.title }}</span>
@@ -50,7 +50,12 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
           {{ formatPercent(paidPercent) }}
         </span>
 
-        <B24Badge :color="badgeMeta.color" variant="soft" size="sm" class="shrink-0">
+        <B24Badge
+          :color="badgeMeta.color as any"
+          variant="soft"
+          size="sm"
+          class="shrink-0"
+        >
           {{ badgeMeta.label }}
         </B24Badge>
       </button>

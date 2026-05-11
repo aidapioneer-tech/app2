@@ -30,13 +30,27 @@ function isOverdue(row: PaymentRow): boolean {
     <table class="w-full text-sm border-separate" style="border-spacing: 0">
       <thead>
         <tr class="text-(--ui-text-muted) text-xs uppercase tracking-wide">
-          <th class="text-left font-medium py-2 px-2">Тип</th>
-          <th class="text-right font-medium py-2 px-2">Сумма</th>
-          <th class="text-right font-medium py-2 px-2">НДС</th>
-          <th class="text-right font-medium py-2 px-2">Всего</th>
-          <th class="text-right font-medium py-2 px-2">К оплате</th>
-          <th class="text-left font-medium py-2 px-2">Срок</th>
-          <th class="text-left font-medium py-2 px-2">Получено</th>
+          <th class="text-left font-medium py-2 px-2">
+            Тип
+          </th>
+          <th class="text-right font-medium py-2 px-2">
+            Сумма
+          </th>
+          <th class="text-right font-medium py-2 px-2">
+            НДС
+          </th>
+          <th class="text-right font-medium py-2 px-2">
+            Всего
+          </th>
+          <th class="text-right font-medium py-2 px-2">
+            К оплате
+          </th>
+          <th class="text-left font-medium py-2 px-2">
+            Срок
+          </th>
+          <th class="text-left font-medium py-2 px-2">
+            Получено
+          </th>
         </tr>
       </thead>
       <tbody>
