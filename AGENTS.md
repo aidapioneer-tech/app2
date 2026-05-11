@@ -6,7 +6,7 @@
 
 Облачное Битрикс24-приложение во вкладке карточки сделки (`CRM_DEAL_DETAIL_TAB`). Показывает финансовую сводку: план / факт оплаты, очищенный от НДС доход, расходы по подрядчикам, маржу. Заменяет устаревший UI «Деньги по сделке» из мокапа (Брестский мясокомбинат, 14046.93 / 14046.94 + три подрядчика).
 
-Стек: Nuxt 4 + `@bitrix24/b24jssdk-nuxt` + `@bitrix24/b24ui-nuxt`. Базовый шаблон — [`bitrix24/templates-dashboard`](https://github.com/bitrix24/templates-dashboard).
+Стек: Nuxt 4 + `@bitrix24/b24jssdk-nuxt` ^1.1.0 + `@bitrix24/b24ui-nuxt` ^2.7.1. Базовый шаблон — [`bitrix24/templates-dashboard`](https://github.com/bitrix24/templates-dashboard).
 
 ## Связка двух репозиториев
 
@@ -143,16 +143,63 @@ i18n/
 - 18 локалей кроме `ru.json`
 - Зависимости: `openai`, `tsx`, `luxon`, `@types/luxon`, `zod`, `@tanstack/*`, `@unovis/*` (последние два — TODO проверить, что не нужны для b24ui)
 
+## Конфигурация окружения (.env)
+
+Файл `.env.example` — образец. Реальный `.env` в git не коммитится. Заполнять так:
+
+```
+NUXT_PUBLIC_SITE_URL=https://app.aidapioneer.by
+NUXT_APP_BASE_URL=/money-info-a4f7
+```
+
+`siteUrl` собирается в `nuxt.config.ts` как `${NUXT_PUBLIC_SITE_URL}${NUXT_APP_BASE_URL}/` — это публичный URL приложения, под который раскатан билд.
+
+### Правило формирования `NUXT_APP_BASE_URL` (для всех app-проектов)
+
+Путь должен быть `/<purpose-slug>-<entropy>`, где:
+- `purpose-slug` — короткое описание назначения (1-3 слова, через `-`): `money-info`, `upload-doc`, `deal-stats`, `payments-sync`.
+- `entropy` — 3-5 случайных hex-символов чтобы избежать коллизий между приложениями на одном хостинге и не дать угадать пути сторонним.
+
+Примеры: `/money-info-a4f7`, `/upload-doc-9f3d`, `/payments-sync-x7k2`.
+
+Использовать одно и то же значение в `.env`, в URL установки приложения Битрикс24 и в URL раскатки на CDN.
+
+## Требуемые scope-ы Битрикс24
+
+При регистрации локального приложения в портале (раздел «Разработчикам»):
+
+| Scope | Зачем |
+|---|---|
+| `placement` | Регистрация вкладки `CRM_DEAL_DETAIL_TAB` через `placement.bind` / `placement.unbind` (в `install.vue`). |
+| `shef.reportbuilder` | Вызов кастомного REST-метода `shef:reportbuilder.api.dealMoney.get` (модуль `shef.reportbuilder` в репо `aida`). |
+
+`crm`, `user_brief` в коробке не обязательны — все данные приходят через серверный action, который сам ходит в `\Bitrix\Crm\*` под правами текущего юзера.
+
 ## Текущее состояние
 
-✅ Backend controller написан, версия модуля бампнута.
-✅ Frontend bootstrap + чистка завершены.
-✅ Все компоненты Money/* созданы.
-✅ Обе ветки запушены: `claude/money-demo-app-F1BU8` в обоих репо.
+✅ Backend controller написан, версия модуля бампнута, PR смержен в `aida/main`.
+✅ Frontend bootstrap + чистка + все компоненты Money/* созданы.
+✅ REST-метод протестирован на портале: `BX.ajax.runAction('shef:reportbuilder.api.dealMoney.get', { data: { dealId: 129 } })` возвращает корректный JSON, числа сходятся.
+✅ Frontend запускается локально (`pnpm dev`) — пользователь подтвердил.
 
-❌ **`pnpm install` / `pnpm build` НЕ запускались** — синтаксис Vue/TS не проверен. Возможны typo, неверные импорты компонентов из `@bitrix24/b24ui-nuxt`.
-❌ REST-метод не тестировался — формулы и серверная логика не проверены на реальных данных.
-❌ Числа из мокапа (Брестский мясокомбинат: 23411.56 / 15361.25 / 10007.50) не сверены.
+❌ Числа из исходного мокапа (Брестский мясокомбинат: 23411.56 / 15361.25 / 10007.50) ещё не сверены на полном UI.
+❌ Cat 3 (подрядчик-вью) не проверена end-to-end.
+❌ Permission-фильтр в DealMoney.php — TODO.
+
+## Доработки от пользователя (поверх первой версии)
+
+Что было добавлено вручную после первой коммита агента:
+
+1. **Bumped deps**: `@bitrix24/b24ui-nuxt` 2.6 → 2.7.1, `@bitrix24/b24jssdk(-nuxt)` 1.0.5 → 1.1.0.
+2. **`vite.optimizeDeps.include`** в `nuxt.config.ts` — pre-bundle для `b24icons-vue/main/CloudErrorIcon` и `b24jssdk`. Ускоряет dev-старт.
+3. **`NUXT_APP_BASE_URL` env-переменная** + правило формирования (см. выше).
+4. **Loader пока B24 инициализируется**: `app/components/home/HomeLoader.vue` (центрованный `LoaderClockIcon`). Layout `clear.vue` через `inject('isLoading')` показывает его до завершения `b24Instance.init()`.
+5. **`install.vue` упрощён**: убран mock-режим, `placement.bind` всегда переустанавливается через `callBatch(unbind + bind)`, `appUrl` берётся из `window.location` через `getBaseUrl()` (отрезает `/install`), а не из `runtimeConfig`.
+6. **`PLACEMENT_TITLE`** содержит маркер окружения: `[devSh]/[prodSh] Деньги` — чтобы не путать dev-вкладку с prod на одном портале.
+7. **Иконки**: `outline/ChevronDownIcon` заменена на `actions/ChevronDownIcon`, `outline/ChevronRightIcon` на `outline/ChevronRightLIcon` — в новой версии b24icons первые отсутствуют.
+8. **`lint:fix`** скрипт в `package.json`.
+
+Эти решения теперь — норма проекта. Не откатывать.
 
 ## Известные дыры в коде
 
