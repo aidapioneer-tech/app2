@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import type { B24Frame } from '@bitrix24/b24jssdk'
 import type { ContractorBlock as ContractorBlockType } from '~/types'
 import { ref, computed } from 'vue'
 import PaymentsTable from './PaymentsTable.vue'
 import { formatMoney, formatPercent } from './format'
+import { useB24 } from '~/composables/useB24'
 import ChevronDownIcon from '@bitrix24/b24icons-vue/actions/ChevronDownIcon'
 import ChevronRightLIcon from '@bitrix24/b24icons-vue/outline/ChevronRightLIcon'
+import ExternalLinkIcon from '@bitrix24/b24icons-vue/outline/ExternalLinkLIcon'
 
 const props = defineProps<{
   block: ContractorBlockType
 }>()
 
 const open = ref(false)
+const b24Instance = useB24()
 
 const paidPercent = computed(() => {
   if (props.block.totals.planTotal <= 0) return 0
@@ -24,6 +28,13 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
     default: return { label: 'Не начато', color: 'air-secondary' as const }
   }
 })
+
+async function openDeal(event: MouseEvent) {
+  event.stopPropagation()
+  const $b24 = b24Instance.get() as B24Frame | undefined
+  if (!$b24) return
+  await $b24.parent.openPath(`/crm/deal/details/${props.block.dealId}/`)
+}
 </script>
 
 <template>
@@ -38,7 +49,14 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
 
         <div class="flex flex-col min-w-0 flex-1">
           <span class="text-sm font-medium truncate">{{ block.companyTitle || block.title }}</span>
-          <span class="text-xs text-(--ui-text-muted)">Сделка #{{ block.dealId }}</span>
+          <button
+            type="button"
+            class="text-xs text-(--ui-text-muted) hover:text-(--ui-color-accent-main) hover:underline flex items-center gap-1 w-fit"
+            @click="openDeal"
+          >
+            <component :is="ExternalLinkIcon" class="size-3" />
+            Сделка #{{ block.dealId }}
+          </button>
         </div>
 
         <div class="hidden md:flex flex-col items-end text-xs text-(--ui-text-muted) shrink-0">
@@ -61,7 +79,7 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
       </button>
 
       <div v-if="open" class="border-t border-(--ui-border) p-4">
-        <PaymentsTable :payments="block.payments" :currency="block.currencyId" />
+        <PaymentsTable :payments="block.payments" :currency="block.currencyId" :tax-rate="20" />
       </div>
     </template>
   </B24Card>

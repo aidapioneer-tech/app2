@@ -6,9 +6,22 @@ import { formatMoney, formatDate } from './format'
 const props = defineProps<{
   payments: PaymentRow[]
   currency: string
+  taxRate?: number
 }>()
 
+const effectiveTaxRate = computed(() => props.taxRate ?? 20)
+
 const isEmpty = computed(() => props.payments.length === 0)
+
+function calcPlanVat(row: PaymentRow): number {
+  if (row.planVat > 0) return row.planVat
+  return Math.round(row.planTotal * effectiveTaxRate.value / (100 + effectiveTaxRate.value) * 100) / 100
+}
+
+function calcPlanNet(row: PaymentRow): number {
+  if (row.planNet > 0) return row.planNet
+  return Math.round((row.planTotal - calcPlanVat(row)) * 100) / 100
+}
 
 function typeLabel(type: PaymentRow['type']): string {
   return type === 'prepay' ? 'пред-оплата' : 'пост-оплата'
@@ -69,10 +82,10 @@ function isOverdue(row: PaymentRow): boolean {
             </B24Badge>
           </td>
           <td class="py-2 px-2 text-right tabular-nums">
-            {{ formatMoney(row.factNet, currency) }}
+            {{ formatMoney(calcPlanNet(row), currency) }}
           </td>
           <td class="py-2 px-2 text-right tabular-nums">
-            {{ formatMoney(row.factVat, currency) }}
+            {{ formatMoney(calcPlanVat(row), currency) }}
           </td>
           <td
             class="py-2 px-2 text-right tabular-nums font-medium"

@@ -26,7 +26,11 @@ const currency = computed(() => props.data.deal.currencyId || 'BYN')
     <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-3' }">
       <template #default>
         <span class="text-xs text-(--ui-text-muted) uppercase tracking-wide">Платежи подрядчику</span>
-        <PaymentsTable :payments="data.payments" :currency="currency" />
+        <PaymentsTable
+          :payments="data.payments"
+          :currency="currency"
+          :tax-rate="20"
+        />
       </template>
     </B24Card>
 
