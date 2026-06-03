@@ -11,8 +11,6 @@ const props = defineProps<{
 }>()
 
 const currency = computed(() => props.data.deal.currencyId || 'BYN')
-// TODO: уточнить с клиентом — для вида подрядчика брать taxRate сделки или всегда 20%?
-const taxRate = computed(() => props.data.deal.taxRate ?? 20)
 </script>
 
 <template>
@@ -31,7 +29,7 @@ const taxRate = computed(() => props.data.deal.taxRate ?? 20)
         <PaymentsTable
           :payments="data.payments"
           :currency="currency"
-          :tax-rate="taxRate"
+          :tax-rate="data.deal.taxRate"
         />
       </template>
     </B24Card>

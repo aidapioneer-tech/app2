@@ -3,28 +3,39 @@ import type { PaymentRow } from '~/types'
 import { computed } from 'vue'
 import { formatMoney, formatDate } from './format'
 
+/** Фолбэк-ставка НДС (уточнить с клиентом: всегда 20% для подрядчиков или реальная ставка?) */
+const DEFAULT_TAX_RATE = 20
+
 const props = defineProps<{
   payments: PaymentRow[]
   currency: string
   taxRate?: number
 }>()
 
-const effectiveTaxRate = computed(() => props.taxRate ?? 20)
+const effectiveTaxRate = computed(() => {
+  const rate = props.taxRate ?? DEFAULT_TAX_RATE
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) return DEFAULT_TAX_RATE
+  return rate
+})
 
 const isEmpty = computed(() => props.payments.length === 0)
 
 function calcPlanVat(row: PaymentRow): number {
   if (row.planVat > 0) return row.planVat
+  if (!Number.isFinite(row.planTotal) || row.planTotal <= 0) return 0
   return Math.round(row.planTotal * effectiveTaxRate.value / (100 + effectiveTaxRate.value) * 100) / 100
 }
 
 function calcPlanNet(row: PaymentRow): number {
   if (row.planNet > 0) return row.planNet
+  if (!Number.isFinite(row.planTotal) || row.planTotal <= 0) return 0
   return Math.round((row.planTotal - calcPlanVat(row)) * 100) / 100
 }
 
 function typeLabel(type: PaymentRow['type']): string {
-  return type === 'prepay' ? 'пред-оплата' : 'пост-оплата'
+  if (type === 'prepay') return 'пред-оплата'
+  if (type === 'postpay') return 'пост-оплата'
+  return type
 }
 
 function isOverdue(row: PaymentRow): boolean {

@@ -51,8 +51,8 @@ export interface ContractorBlock {
   companyId: number
   companyTitle: string
   currencyId: string
-  /** Ставка НДС сделки подрядчика. Уточнить с клиентом нужно ли всегда 20% или брать реальную ставку. */
-  taxRate: number
+  /** НДС-ставка (%) сделки подрядчика. Опционально — пока бэкенд не возвращает поле. */
+  taxRate?: number
   badge: ContractorBadge
   payments: PaymentRow[]
   totals: {

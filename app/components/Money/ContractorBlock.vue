@@ -8,6 +8,8 @@ import { useB24 } from '~/composables/useB24'
 import ChevronDownIcon from '@bitrix24/b24icons-vue/actions/ChevronDownIcon'
 import ChevronRightLIcon from '@bitrix24/b24icons-vue/outline/ChevronRightLIcon'
 
+const DEFAULT_TAX_RATE = 20
+
 const props = defineProps<{
   block: ContractorBlockType
 }>()
@@ -28,15 +30,20 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
   }
 })
 
-// TODO: уточнить с клиентом — taxRate берём из сделки подрядчика или всегда 20%?
-// Сейчас: берём из block.taxRate (бэкенд), fallback 20.
-const contractorTaxRate = computed(() => props.block.taxRate ?? 20)
+// TODO #issue: спросить клиента всегда ли 20% для подрядчиков или брать реальную ставку сделки
+const contractorTaxRate = computed(() => props.block.taxRate ?? DEFAULT_TAX_RATE)
 
 async function openDeal(event: MouseEvent) {
   event.stopPropagation()
+  if (!Number.isInteger(props.block.dealId) || props.block.dealId <= 0) return
   const $b24 = b24Instance.get() as B24Frame | undefined
   if (!$b24) return
-  await $b24.parent.openPath(`/crm/deal/details/${props.block.dealId}/`)
+  try {
+    await $b24.parent.openPath(`/crm/deal/details/${props.block.dealId}/`)
+  }
+  catch (e) {
+    console.error('[ContractorBlock] openDeal failed', e)
+  }
 }
 </script>
 
