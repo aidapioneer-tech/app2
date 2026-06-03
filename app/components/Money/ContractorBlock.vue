@@ -28,6 +28,10 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
   }
 })
 
+// TODO: уточнить с клиентом — taxRate берём из сделки подрядчика или всегда 20%?
+// Сейчас: берём из block.taxRate (бэкенд), fallback 20.
+const contractorTaxRate = computed(() => props.block.taxRate ?? 20)
+
 async function openDeal(event: MouseEvent) {
   event.stopPropagation()
   const $b24 = b24Instance.get() as B24Frame | undefined
@@ -77,7 +81,11 @@ async function openDeal(event: MouseEvent) {
       </button>
 
       <div v-if="open" class="border-t border-(--ui-border) p-4">
-        <PaymentsTable :payments="block.payments" :currency="block.currencyId" :tax-rate="20" />
+        <PaymentsTable
+          :payments="block.payments"
+          :currency="block.currencyId"
+          :tax-rate="contractorTaxRate"
+        />
       </div>
     </template>
   </B24Card>
