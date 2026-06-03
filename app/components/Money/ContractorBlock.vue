@@ -7,7 +7,6 @@ import { formatMoney, formatPercent } from './format'
 import { useB24 } from '~/composables/useB24'
 import ChevronDownIcon from '@bitrix24/b24icons-vue/actions/ChevronDownIcon'
 import ChevronRightLIcon from '@bitrix24/b24icons-vue/outline/ChevronRightLIcon'
-import ExternalLinkIcon from '@bitrix24/b24icons-vue/outline/ExternalLinkLIcon'
 
 const props = defineProps<{
   block: ContractorBlockType
@@ -51,11 +50,10 @@ async function openDeal(event: MouseEvent) {
           <span class="text-sm font-medium truncate">{{ block.companyTitle || block.title }}</span>
           <button
             type="button"
-            class="text-xs text-(--ui-text-muted) hover:text-(--ui-color-accent-main) hover:underline flex items-center gap-1 w-fit"
+            class="text-xs text-(--ui-text-muted) hover:text-(--ui-color-accent-main) hover:underline w-fit"
             @click="openDeal"
           >
-            <component :is="ExternalLinkIcon" class="size-3" />
-            Сделка #{{ block.dealId }}
+            Сделка #{{ block.dealId }} ↗
           </button>
         </div>
 
