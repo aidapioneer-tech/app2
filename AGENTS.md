@@ -1,5 +1,7 @@
 # AGENTS.md — aida-app-money
 
+_Last reviewed: 2026-06-03_
+
 Контекст для AI-агентов и разработчиков, продолжающих этот проект. Прочти весь файл прежде чем что-то менять.
 
 ## Что это
@@ -185,10 +187,12 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 ✅ Frontend bootstrap + чистка + все компоненты Money/* созданы.
 ✅ REST-метод протестирован на портале: `BX.ajax.runAction('shef:reportbuilder.api.dealMoney.get', { data: { dealId: 129 } })` возвращает корректный JSON, числа сходятся.
 ✅ Frontend запускается локально (`pnpm dev`) — пользователь подтвердил.
+✅ CI/CD deploy workflow добавлен (`.github/workflows/deploy.yml`) — pnpm + rsync, lint/typecheck, backup, smoke test.
 
 ❌ Числа из исходного мокапа (Брестский мясокомбинат: 23411.56 / 15361.25 / 10007.50) ещё не сверены на полном UI.
 ❌ Cat 3 (подрядчик-вью) не проверена end-to-end.
 ❌ Permission-фильтр в DealMoney.php — TODO.
+❌ Деплой не активен: нужно создать ветку `main` и настроить GitHub Secrets/Variables + сервер (см. `.github/workflows/deploy.yml` — чек-лист в заголовке файла).
 
 ## Известные дыры в коде
 
