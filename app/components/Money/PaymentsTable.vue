@@ -17,22 +17,28 @@ const effectiveTaxRate = computed(() => {
 
 const isEmpty = computed(() => props.payments.length === 0)
 
+function isValidAmount(v: number): boolean {
+  return Number.isFinite(v) && v > 0
+}
+
 function calcPlanVat(row: PaymentRow): number {
+  // planVat > 0 — sentinel: бэкенд уже вернул значение, используем его.
+  // Иначе вычисляем client-side. Формула НДС-включённого: planTotal × rate / (100 + rate)
   if (row.planVat > 0) return row.planVat
-  if (!Number.isFinite(row.planTotal) || row.planTotal <= 0) return 0
+  if (!isValidAmount(row.planTotal)) return 0
   return Math.round(row.planTotal * effectiveTaxRate.value / (100 + effectiveTaxRate.value) * 100) / 100
 }
 
 function calcPlanNet(row: PaymentRow): number {
   if (row.planNet > 0) return row.planNet
-  if (!Number.isFinite(row.planTotal) || row.planTotal <= 0) return 0
+  if (!isValidAmount(row.planTotal)) return 0
   return Math.round((row.planTotal - calcPlanVat(row)) * 100) / 100
 }
 
 function typeLabel(type: PaymentRow['type']): string {
   if (type === 'prepay') return 'пред-оплата'
   if (type === 'postpay') return 'пост-оплата'
-  return type
+  return type // неизвестный тип — возвращаем строку как есть
 }
 
 function isOverdue(row: PaymentRow): boolean {

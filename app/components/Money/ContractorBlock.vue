@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { B24Frame } from '@bitrix24/b24jssdk'
 import type { ContractorBlock as ContractorBlockType } from '~/types'
 import { ref, computed } from 'vue'
 import PaymentsTable from './PaymentsTable.vue'
@@ -33,13 +32,13 @@ const contractorTaxRate = computed(() => props.block.taxRate ?? 0)
 async function openDeal(event: MouseEvent) {
   event.stopPropagation()
   if (!Number.isInteger(props.block.dealId) || props.block.dealId <= 0) return
-  const $b24 = b24Instance.get() as B24Frame | undefined
+  const $b24 = b24Instance.get()
   if (!$b24) return
   try {
     await $b24.parent.openPath(`/crm/deal/details/${props.block.dealId}/`)
   }
   catch (e) {
-    console.error('[ContractorBlock] openDeal failed', e)
+    console.error('[ContractorBlock] openDeal failed', e instanceof Error ? e.message : String(e))
   }
 }
 </script>

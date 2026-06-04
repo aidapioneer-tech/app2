@@ -105,11 +105,11 @@ i18n/
 
 ## Колонки таблицы платежей (`PaymentsTable.vue`)
 
-| # | Колонка | Поле | План/факт | Заметки |
+| # | Колонка | Источник | План/факт | Заметки |
 |---|---|---|---|---|
 | 1 | Тип | `type` | план | `prepay` / `postpay` через `paySystemId === 9` |
-| 2 | Сумма | `factNet` | **факт** | без НДС, из распределений 1044 |
-| 3 | НДС | `factVat` | **факт** | НДС от факт-распределённого |
+| 2 | Сумма | `calcPlanNet(row)` | **план** | без НДС; если `planNet > 0` — берём из бэкенда, иначе вычисляем client-side |
+| 3 | НДС | `calcPlanVat(row)` | **план** | НДС; если `planVat > 0` — берём из бэкенда, иначе вычисляем client-side. Если `taxRate = 0` — 0 |
 | 4 | Всего | `planTotal` | план | с НДС; зелёный когда `isFullyPaid` |
 | 5 | К оплате | `leftToPay` | производное | красный когда просрочено |
 | 6 | Срок | `dateDue` | план | `Order.Payment.datePayBefore` |
@@ -123,6 +123,10 @@ i18n/
 |---|---|
 | Где считаем | Серверно, `shef.reportbuilder` (фасад над `shef.aidapioneerby`) |
 | НДС | `AData::getTaxProc()` — первый товар сделки, fallback 20 |
+| НДС fallback на фронте | `calcPlanVat/calcPlanNet` в `PaymentsTable.vue`: если бэкенд не вернул `planVat`/`planNet` (> 0), считаем client-side. Временно до [Issue #7](https://github.com/aidapioneer-tech/app2/issues/7). |
+| НДС = 0 → не выдумывать | Бизнес-правило клиента: если `taxRate = 0` или не передан — НДС = 0, не пересчитываем. |
+| taxRate цепочка | `DealHeader.taxRate` → `Client.vue` / `Contractor.vue` → `PaymentsTable`; `ContractorBlock.taxRate` → `ContractorBlock.vue` → `PaymentsTable` |
+| Навигация к подряду | `ContractorBlock.vue → openDeal()` → `$b24.parent.openPath("/crm/deal/details/{id}/")` |
 | Тип платежа | `paySystemId === 9` ⇒ предоплата (повторяет `Constants::isPrePaySystem`) |
 | Подряд-вкладка | Зеркальный экран + карточка клиентской сделки |
 | Колонки дат | Две: «Срок» (план) и «Получено» (факт) |
@@ -194,6 +198,7 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 4. **`useDealMoney.ts` обработка errors** — REST `B24Frame.callMethod` возвращает `AjaxResult`. У него есть `.getErrorByCode()` или подобное; сейчас errors попадут в `data` как-есть, и парсинг через `result?.result` может молча отдать undefined. Проверить.
 5. **`isOverdue` в PaymentsTable.vue** считает `today.toISOString()` в локальной зоне — для пограничных случаев в timezone ≠ UTC может ошибаться на день.
 6. **Currency mismatch** — клиент BYN, подрядчик в USD/EUR/RUB? Сейчас totals считаются арифметически без конверсии. `AData::getPaymentsSum` имеет конверсию через `CCurrencyRates::ConvertCurrency`, но `buildPaymentRows` в новом controller — нет. Проверить и при необходимости добавить.
+7. **НДС fallback** — `calcPlanVat`/`calcPlanNet` в `PaymentsTable.vue` считают client-side пока бэкенд не возвращает `planVat`/`planNet`. Убрать client-side логику после закрытия [Issue #7](https://github.com/aidapioneer-tech/app2/issues/7).
 
 ## Конвенции проекта
 
@@ -253,7 +258,8 @@ BX24.callMethod('shef:reportbuilder.api.dealMoney.get', { dealId: 12345 }, r => 
 - Не возвращать колонку «По документам» — это рудимент старого мокапа.
 - Не возвращать левое меню / сайдбар.
 - Не делать переключатель языка / dark-mode / settings — экран одностраничный.
-- Не дублировать формулы прибыли в TS — всё считает сервер.
+- Не дублировать формулы **прибыли** в TS — всё считает сервер. (Исключение: НДС-fallback в `PaymentsTable.vue` — временная мера, убрать после Issue #7.)
+- Не выдумывать НДС: если `taxRate = 0` или не передан — НДС = 0. Бизнес-правило клиента, подтверждено в issue #1.
 - Не звать `crm.item.payment.list` / `crm.item.list(1044)` напрямую с фронта — есть один эндпоинт.
 - Не возвращать mock/демо-режим в `install.vue` (конвенция вендора).
 - Не использовать `runtimeConfig.public.siteUrl` для определения собственного URL в рантайме — брать из `window.location`.
