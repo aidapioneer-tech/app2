@@ -35,7 +35,8 @@ async function openDeal(event: MouseEvent) {
   const $b24 = b24Instance.get()
   if (!$b24) return
   try {
-    await $b24.parent.openPath(`/crm/deal/details/${props.block.dealId}/`)
+    const url = $b24.slider.getUrl(`/crm/deal/details/${props.block.dealId}/`)
+    await $b24.slider.openPath(url)
   } catch (e) {
     console.error('[ContractorBlock] openDeal failed', e instanceof Error ? e.message : String(e))
   }
