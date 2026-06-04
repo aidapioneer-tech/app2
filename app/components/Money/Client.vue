@@ -27,7 +27,11 @@ const contractors = computed(() => props.data.contractors ?? [])
     <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-3' }">
       <template #default>
         <span class="text-xs text-(--ui-text-muted) uppercase tracking-wide">Платежи клиента</span>
-        <PaymentsTable :payments="data.payments" :currency="currency" />
+        <PaymentsTable
+          :payments="data.payments"
+          :currency="currency"
+          :tax-rate="data.deal.taxRate"
+        />
       </template>
     </B24Card>
 

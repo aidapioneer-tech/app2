@@ -10,7 +10,7 @@ export type DealMode = 'client' | 'contractor'
 
 export interface PaymentRow {
   paymentId: number
-  type: PaymentType
+  type: PaymentType | (string & {})
   planTotal: number
   planNet: number
   planVat: number
@@ -51,6 +51,8 @@ export interface ContractorBlock {
   companyId: number
   companyTitle: string
   currencyId: string
+  /** НДС-ставка сделки, %. Диапазон 0–100. Отсутствие поля = НДС не указан → расчёт не производится. */
+  taxRate?: number
   badge: ContractorBadge
   payments: PaymentRow[]
   totals: {
