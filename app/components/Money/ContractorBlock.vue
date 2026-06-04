@@ -8,8 +8,6 @@ import { useB24 } from '~/composables/useB24'
 import ChevronDownIcon from '@bitrix24/b24icons-vue/actions/ChevronDownIcon'
 import ChevronRightLIcon from '@bitrix24/b24icons-vue/outline/ChevronRightLIcon'
 
-const DEFAULT_TAX_RATE = 20
-
 const props = defineProps<{
   block: ContractorBlockType
 }>()
@@ -30,8 +28,7 @@ const badgeMeta = computed<{ label: string, color: string }>(() => {
   }
 })
 
-// TODO #issue: спросить клиента всегда ли 20% для подрядчиков или брать реальную ставку сделки
-const contractorTaxRate = computed(() => props.block.taxRate ?? DEFAULT_TAX_RATE)
+const contractorTaxRate = computed(() => props.block.taxRate ?? 0)
 
 async function openDeal(event: MouseEvent) {
   event.stopPropagation()

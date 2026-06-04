@@ -3,9 +3,6 @@ import type { PaymentRow } from '~/types'
 import { computed } from 'vue'
 import { formatMoney, formatDate } from './format'
 
-/** Фолбэк-ставка НДС (уточнить с клиентом: всегда 20% для подрядчиков или реальная ставка?) */
-const DEFAULT_TAX_RATE = 20
-
 const props = defineProps<{
   payments: PaymentRow[]
   currency: string
@@ -13,8 +10,8 @@ const props = defineProps<{
 }>()
 
 const effectiveTaxRate = computed(() => {
-  const rate = props.taxRate ?? DEFAULT_TAX_RATE
-  if (!Number.isFinite(rate) || rate < 0 || rate > 100) return DEFAULT_TAX_RATE
+  const rate = props.taxRate ?? 0
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) return 0
   return rate
 })
 
