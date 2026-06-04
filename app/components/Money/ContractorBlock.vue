@@ -36,8 +36,7 @@ async function openDeal(event: MouseEvent) {
   if (!$b24) return
   try {
     await $b24.parent.openPath(`/crm/deal/details/${props.block.dealId}/`)
-  }
-  catch (e) {
+  } catch (e) {
     console.error('[ContractorBlock] openDeal failed', e instanceof Error ? e.message : String(e))
   }
 }
