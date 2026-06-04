@@ -63,13 +63,14 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
+            -p 7222 \
             ${{ secrets.SSH_DEPLOY_USER }}@${{ secrets.SSH_DEPLOY_HOST }} \
             "if [ -d ${{ secrets.SSH_DEPLOY_PATH }} ]; then mkdir -p ${{ secrets.SSH_DEPLOY_PATH }}-backup && cp -a ${{ secrets.SSH_DEPLOY_PATH }}/. ${{ secrets.SSH_DEPLOY_PATH }}-backup/; fi"
 
       - name: Deploy
         run: |
           rsync -az --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes" \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -p 7222" \
             .output/public/ \
             ${{ secrets.SSH_DEPLOY_USER }}@${{ secrets.SSH_DEPLOY_HOST }}:${{ secrets.SSH_DEPLOY_PATH }}/
 
