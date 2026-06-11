@@ -56,32 +56,50 @@ jobs:
           test -d .output/public && [ "$(ls -A .output/public)" ] || (echo "Build output is empty" && exit 1)
 
       - name: Setup SSH
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_DEPLOY_KEY: ${{ secrets.SSH_DEPLOY_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" >> ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-          echo "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
       - name: Backup previous version
+        env:
+          DEPLOY_USER: ${{ secrets.SSH_DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.SSH_DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ secrets.SSH_DEPLOY_PATH }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o IdentitiesOnly=yes \
             -p 7222 \
-            ${{ secrets.SSH_DEPLOY_USER }}@${{ secrets.SSH_DEPLOY_HOST }} \
-            "if [ -d '${{ secrets.SSH_DEPLOY_PATH }}' ]; then mkdir -p '${{ secrets.SSH_DEPLOY_PATH }}-backup' && cp -a '${{ secrets.SSH_DEPLOY_PATH }}/.' '${{ secrets.SSH_DEPLOY_PATH }}-backup/'; fi"
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "if [ -d '$DEPLOY_PATH' ]; then mkdir -p '$DEPLOY_PATH-backup' && cp -a '$DEPLOY_PATH/.' '$DEPLOY_PATH-backup/'; fi"
 
       - name: Deploy
+        env:
+          DEPLOY_USER: ${{ secrets.SSH_DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.SSH_DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ secrets.SSH_DEPLOY_PATH }}
         run: |
           rsync -az --delete \
             -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -p 7222" \
             .output/public/ \
-            "${{ secrets.SSH_DEPLOY_USER }}@${{ secrets.SSH_DEPLOY_HOST }}:${{ secrets.SSH_DEPLOY_PATH }}/"
+            "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
       - name: Smoke test
+        env:
+          SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
+          BASE_URL: ${{ vars.NUXT_APP_BASE_URL }}
         run: |
-          curl -fsS --max-time 15 --retry 3 --retry-delay 5 \
-            "${{ vars.NUXT_PUBLIC_SITE_URL }}${{ vars.NUXT_APP_BASE_URL }}/" > /dev/null
+          url="${SITE_URL}${BASE_URL}/"
+          # Проверяем доступность (HTTP 2xx через -f) и что отдаётся именно
+          # HTML, а не заглушка/пустой ответ хостинга.
+          content_type=$(curl -fsS --max-time 15 --retry 3 --retry-delay 5 -o /dev/null -w '%{content_type}' "$url")
+          echo "Content-Type: $content_type"
+          echo "$content_type" | grep -qi 'text/html' || (echo "Ответ не HTML" && exit 1)
 
       - name: Cleanup SSH key
         if: always()
