@@ -89,11 +89,12 @@ export const useB24 = () => {
 
       $b24Helper = getB24Helper()
       return set(b24)
-    } catch {
-      // set(undefined)
+    } catch (error) {
+      // Возвращаем ошибку в Result, чтобы app.vue показал toast.
+      // Раньше catch молча проглатывал ошибку и init() всегда возвращал
+      // успешный пустой Result — сообщение о сбое инициализации не доходило.
+      return new Result().addError(error instanceof Error ? error : new Error(String(error)))
     }
-
-    return new Result()
   }
 
   function isFrame() {
