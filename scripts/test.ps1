@@ -3,6 +3,11 @@
 $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
+if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+  Write-Error 'pnpm не найден в PATH. Установите: https://pnpm.io/installation'
+  exit 1
+}
+
 Write-Host '==> pnpm install'
 pnpm install --frozen-lockfile
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -22,6 +22,10 @@ describe('formatMoney', () => {
     expect(formatMoney(-500.5, 'USD')).toBe('-500,50 USD')
   })
 
+  it('корректно расставляет разделители в отрицательной сумме с тысячами', () => {
+    expect(formatMoney(-1234567.89)).toBe('-1 234 567,89 BYN')
+  })
+
   it('использует BYN по умолчанию', () => {
     expect(formatMoney(42)).toBe('42,00 BYN')
   })
@@ -53,9 +57,15 @@ describe('formatPercent', () => {
     expect(formatPercent(33.36)).toBe('33.4%')
   })
 
+  it('форматирует отрицательный процент', () => {
+    expect(formatPercent(-5)).toBe('-5.0%')
+    expect(formatPercent(-33.36)).toBe('-33.4%')
+  })
+
   it('возвращает «—» для нечисловых значений', () => {
     expect(formatPercent(Number.NaN)).toBe('—')
     expect(formatPercent(Number.POSITIVE_INFINITY)).toBe('—')
+    expect(formatPercent(Number.NEGATIVE_INFINITY)).toBe('—')
   })
 })
 
@@ -75,5 +85,15 @@ describe('formatDate', () => {
 
   it('возвращает исходную строку для нераспознанного формата', () => {
     expect(formatDate('not-a-date')).toBe('not-a-date')
+  })
+
+  it('не валидирует диапазоны (документируем текущее поведение)', () => {
+    // Регэксп не проверяет корректность месяца/дня — переставляет как есть
+    expect(formatDate('2024-13-45')).toBe('45.13.2024')
+  })
+
+  it('возвращает строку как есть, если числа однозначные', () => {
+    // Требуются ровно две цифры — '2024-1-5' не матчится
+    expect(formatDate('2024-1-5')).toBe('2024-1-5')
   })
 })
