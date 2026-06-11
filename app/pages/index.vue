@@ -20,7 +20,9 @@ const dealId = computed<number>(() => {
   if (!isFrame.value) return 0
   const $b24 = b24Instance.get() as B24Frame
   const opts = ($b24.placement?.options ?? {}) as Record<string, unknown>
-  return Number(opts.ID ?? 0) || 0
+  const id = Number(opts.ID ?? 0)
+  // Только целое положительное — дробный/мусорный ID не уходит в REST.
+  return Number.isInteger(id) && id > 0 ? id : 0
 })
 
 const placementOk = computed<boolean>(() => {
@@ -38,6 +40,9 @@ async function fitFrame(): Promise<void> {
   const $b24 = b24Instance.get() as B24Frame | undefined
   if (!$b24) return
   await nextTick()
+  // ещё один кадр после nextTick — дать b24ui дорисовать карточки/бейджи
+  // до замера высоты, иначе fitWindow может «недомерить» и оставить скролл.
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   try {
     await $b24.parent.fitWindow()
   } catch (e) {
@@ -58,8 +63,8 @@ onMounted(async () => {
   if (!isFrame.value) return
   if (dealId.value > 0) {
     await load(dealId.value)
-    const $b24 = b24Instance.get() as B24Frame
-    await $b24.parent.setTitle('Деньги')
+    const $b24 = b24Instance.get() as B24Frame | undefined
+    if ($b24) await $b24.parent.setTitle('Деньги')
     await fitFrame()
   }
 })

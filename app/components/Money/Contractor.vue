@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import Header from './Header.vue'
 import PaymentsTable from './PaymentsTable.vue'
 import ParentClientCard from './ParentClientCard.vue'
-import { formatMoney, formatPercent } from './format'
+import { buildHeaderMetrics } from './headerMetrics'
 
 const props = defineProps<{
   data: DealMoneyResponse
@@ -12,14 +12,7 @@ const props = defineProps<{
 
 const currency = computed(() => props.data.deal.currencyId || 'BYN')
 
-const headerMetrics = computed(() => {
-  const plan = props.data.totals.plan
-  return [
-    { label: 'Сумма расхода', value: formatMoney(plan.expenseTotal, currency.value) },
-    { label: 'Маржинальность', value: formatPercent(plan.marginPercent) },
-    { label: 'Доход (без НДС)', value: formatMoney(plan.incomeNet, currency.value) }
-  ]
-})
+const headerMetrics = computed(() => buildHeaderMetrics(props.data.totals, currency.value, props.data.mode))
 </script>
 
 <template>

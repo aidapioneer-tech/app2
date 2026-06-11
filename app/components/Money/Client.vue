@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import Header from './Header.vue'
 import PaymentsTable from './PaymentsTable.vue'
 import ContractorBlock from './ContractorBlock.vue'
-import { formatMoney, formatPercent } from './format'
+import { buildHeaderMetrics } from './headerMetrics'
 
 const props = defineProps<{
   data: DealMoneyResponse
@@ -13,14 +13,7 @@ const props = defineProps<{
 const currency = computed(() => props.data.deal.currencyId || 'BYN')
 const contractors = computed(() => props.data.contractors ?? [])
 
-const headerMetrics = computed(() => {
-  const plan = props.data.totals.plan
-  return [
-    { label: 'Сумма сделки', value: formatMoney(plan.incomeGross, currency.value) },
-    { label: 'Маржинальность', value: formatPercent(plan.marginPercent) },
-    { label: 'Доход клиента', value: formatMoney(plan.incomeNet, currency.value) }
-  ]
-})
+const headerMetrics = computed(() => buildHeaderMetrics(props.data.totals, currency.value, props.data.mode))
 </script>
 
 <template>

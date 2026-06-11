@@ -93,6 +93,7 @@ app/
 │   ├── Client.vue                — экран клиентской сделки (cat 2)
 │   ├── Contractor.vue            — экран сделки подряда (cat 3)
 │   ├── Header.vue                — шапка: 3 метрики + кнопка «Обновить» (presentation-only)
+│   ├── headerMetrics.ts          — buildHeaderMetrics() + тип HeaderMetric (метрики шапки по mode)
 │   ├── refresh.ts                — InjectionKey + тип контракта «обновить данные» (provide/inject)
 │   ├── PaymentsTable.vue         — 7-колоночная таблица платежей
 │   ├── ContractorBlock.vue       — блок одного подряда (без аккордеона, цветной акцент по статусу)
@@ -130,11 +131,11 @@ i18n/
 | НДС = 0 → не выдумывать | Бизнес-правило клиента: если `taxRate = 0` или не передан — НДС = 0, не пересчитываем. |
 | taxRate цепочка | `DealHeader.taxRate` → `Client.vue` / `Contractor.vue` → `PaymentsTable`; `ContractorBlock.taxRate` → `ContractorBlock.vue` → `PaymentsTable` |
 | Навигация к подряду | `ContractorBlock.vue → openDeal()` → `$b24.slider.openPath($b24.slider.getUrl("/crm/deal/details/{id}/"))` |
-| Шапка (Header) | Presentation-only: получает `title/subtitle/metrics[]`. Клиент: Сумма сделки / Маржинальность / Доход клиента (всё `totals.plan`). Без разделения план/факт, без прогресс-бара. |
-| Кнопка «Обновить» | Контракт через provide/inject (`refresh.ts → moneyRefreshKey`). `index.vue` отдаёт `reloadAll`+`loading`; `Header.vue` инжектит и рисует `B24Button`. Повторный запрос не сбрасывает экран в скелетон (`v-if="loading && !data"`). |
+| Шапка (Header) | Presentation-only: получает `title/subtitle/metrics[]`. Метрики формирует `headerMetrics.ts → buildHeaderMetrics(totals, currency, mode)` (единая точка правды). Клиент: Сумма сделки (с НДС) / Маржинальность / Доход (без НДС). Подрядчик: Сумма расхода / Маржинальность / Доход (без НДС). Всё `totals.plan`. Без разделения план/факт, без прогресс-бара. |
+| Кнопка «Обновить» | Контракт через provide/inject (`refresh.ts → moneyRefreshKey`). `index.vue` отдаёт `reloadAll` + `busy` (обёртка над `loading`); `Header.vue` инжектит и рисует `B24Button` (`:loading`+`:disabled` от busy). Повторный запрос не сбрасывает экран в скелетон (`v-if="loading && !data"` в `index.vue`). |
 | Высота встройки | После каждого `load()` (и initial, и refresh) — `$b24.parent.fitWindow()` в `index.vue → fitFrame()`. Убирает внутренний скролл фрейма. Вызывать после `nextTick`. |
 | Итоговый блок План/Факт | `Totals.vue` скрыт из `Client.vue`/`Contractor.vue` по решению владельца. Файл и формулы оставлены. Доработка формул трекается отдельным Issue. |
-| Подрядчики (UI) | Без аккордеона — платежи всегда видны. Цветной левый бордер по статусу бейджа (success/warning/border). В шапке блока: название подрядчика + ссылка на сделку (`block.title`) + бейдж. |
+| Подрядчики (UI) | Без аккордеона — платежи всегда видны. Левый бордер-акцент по статусу (один computed `status` в `ContractorBlock.vue`: текст бейджа + цвет + accentClass). Токены: `--ui-color-accent-main-success` (оплачено) / `--ui-color-accent-main-warning` (частично) / `--ui-border` (не начато). В шапке блока: название подрядчика + ссылка на сделку (`block.title`) + бейдж. |
 | Тип платежа | `paySystemId === 9` ⇒ предоплата (повторяет `Constants::isPrePaySystem`) |
 | Подряд-вкладка | Зеркальный экран + карточка клиентской сделки |
 | Колонки дат | Две: «Срок» (план) и «Получено» (факт) |
@@ -146,7 +147,7 @@ i18n/
 
 - `app/layouts/default.vue` (левое меню)
 - `app/pages/{customers,inbox,settings}.vue`, `app/pages/settings/`
-- `app/components/{customers,inbox,home,settings,icons}/`
+- `app/components/{customers,inbox,settings,icons}/` и `home/*` кроме `home/HomeLoader.vue` (loader оставлен — используется в `clear.vue`)
 - `app/components/{NotificationsSlideover,UserMenu,AppLogo,AppTitle}.vue`
 - `app/composables/{useDashboard.ts,useDealStats/}`
 - `server/api/*` (4 mock-эндпоинта)
@@ -218,7 +219,7 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 - **TS/Vue**: Composition API, `<script setup lang="ts">`. Без emoji в UI. Числа форматировать через `formatMoney` (split + space-separator). Без `replace('белорусских рублей', 'бел. руб')` костыля.
 - **i18n**: только `ru`. Все тексты в шаблонах захардкожены — i18n-ключи можно не использовать.
 - **Стили**: tailwind utility classes + `@bitrix24/b24ui-nuxt` компоненты (`B24Card`, `B24Badge`, `B24Progress`, `B24Skeleton`, `B24Alert`). CSS-переменные дизайн-системы — `var(--ui-text-muted)`, `var(--ui-bg-elevated)`, `var(--ui-color-accent-main-success/alert)`.
-- **Цветовой код**: только зелёный (получено / оплачено), красный (просрочено), серый (ожидание / muted). Без других акцентов.
+- **Цветовой код**: только зелёный (получено / оплачено), красный (просрочено), серый (ожидание / muted). Без других акцентов. **Исключение**: левый бордер блока подрядчика для статуса «Частично» — оранжевый (`--ui-color-accent-main-warning`), как статус-индикатор (не декоративный акцент).
 
 ### Зависимости
 

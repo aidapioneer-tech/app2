@@ -1,12 +1,8 @@
 <script setup lang="ts">
+import type { HeaderMetric } from './headerMetrics'
 import { computed, inject } from 'vue'
 import Refresh1Icon from '@bitrix24/b24icons-vue/actions/Refresh1Icon'
 import { moneyRefreshKey } from './refresh'
-
-interface HeaderMetric {
-  label: string
-  value: string
-}
 
 defineProps<{
   title: string
@@ -19,7 +15,8 @@ const refreshApi = inject(moneyRefreshKey, null)
 const busy = computed(() => refreshApi?.busy.value ?? false)
 
 function onRefresh(): void {
-  refreshApi?.refresh()
+  // Промис намеренно не ждём здесь — состояние крутилки/блокировки идёт через busy.
+  void refreshApi?.refresh()
 }
 </script>
 
@@ -38,6 +35,7 @@ function onRefresh(): void {
           color="air-secondary"
           size="sm"
           :loading="busy"
+          :disabled="busy"
           class="shrink-0"
           @click="onRefresh"
         >

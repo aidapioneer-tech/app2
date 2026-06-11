@@ -10,21 +10,22 @@ const props = defineProps<{
 
 const b24Instance = useB24()
 
-const badgeMeta = computed<{ label: string, color: string }>(() => {
-  switch (props.block.badge) {
-    case 'paidByAct': return { label: 'Оплачено', color: 'air-primary-success' }
-    case 'partial': return { label: 'Частично', color: 'air-primary-warning' }
-    default: return { label: 'Не начато', color: 'air-secondary' }
-  }
-})
+/** Цвета бейджа из air-палитры b24ui (подмножество, которое мы используем). */
+type BadgeColor = 'air-primary-success' | 'air-primary-warning' | 'air-secondary'
 
-// Цветной акцент слева — кодирует статус оплаты подрядчика.
-// Палитра проекта: зелёный (оплачено), оранжевый (частично), серый (не начато).
-const accentClass = computed(() => {
+/**
+ * Единый источник вида блока по статусу оплаты подрядчика:
+ * текст бейджа + цвет бейджа + цвет левого акцента карточки.
+ * Один switch — чтобы три значения не разъезжались при добавлении статусов.
+ */
+const status = computed<{ label: string, color: BadgeColor, accentClass: string }>(() => {
   switch (props.block.badge) {
-    case 'paidByAct': return 'border-l-(--ui-color-accent-main-success)'
-    case 'partial': return 'border-l-(--ui-color-accent-main-warning)'
-    default: return 'border-l-(--ui-border)'
+    case 'paidByAct':
+      return { label: 'Оплачено', color: 'air-primary-success', accentClass: 'border-l-(--ui-color-accent-main-success)' }
+    case 'partial':
+      return { label: 'Частично', color: 'air-primary-warning', accentClass: 'border-l-(--ui-color-accent-main-warning)' }
+    default:
+      return { label: 'Не начато', color: 'air-secondary', accentClass: 'border-l-(--ui-border)' }
   }
 })
 
@@ -44,7 +45,7 @@ async function openDeal() {
 </script>
 
 <template>
-  <B24Card :b24ui="{ body: 'p-0' }" :class="['border-l-4', accentClass]">
+  <B24Card :b24ui="{ body: 'p-0' }" :class="['border-l-4', status.accentClass]">
     <template #default>
       <div class="flex items-center gap-3 p-4 bg-(--ui-bg-elevated)">
         <div class="flex flex-col min-w-0 flex-1 gap-0.5">
@@ -61,12 +62,12 @@ async function openDeal() {
         </div>
 
         <B24Badge
-          :color="(badgeMeta.color as any)"
+          :color="status.color"
           variant="soft"
           size="sm"
           class="shrink-0"
         >
-          {{ badgeMeta.label }}
+          {{ status.label }}
         </B24Badge>
       </div>
 
