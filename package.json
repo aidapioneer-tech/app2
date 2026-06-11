@@ -11,7 +11,9 @@
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@bitrix24/b24icons-vue": "^2.0.7",
@@ -40,7 +42,8 @@
     "typescript": "^6.0.2",
     "vue-tsc": "^3.2.6",
     "dotenv": "^17.4.2",
-    "@types/node": "^25.6.0"
+    "@types/node": "^25.6.0",
+    "vitest": "^4.1.8"
   },
   "packageManager": "pnpm@10.33.0"
 }
