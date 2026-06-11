@@ -4,13 +4,22 @@ import { computed } from 'vue'
 import Header from './Header.vue'
 import PaymentsTable from './PaymentsTable.vue'
 import ParentClientCard from './ParentClientCard.vue'
-import Totals from './Totals.vue'
+import { formatMoney, formatPercent } from './format'
 
 const props = defineProps<{
   data: DealMoneyResponse
 }>()
 
 const currency = computed(() => props.data.deal.currencyId || 'BYN')
+
+const headerMetrics = computed(() => {
+  const plan = props.data.totals.plan
+  return [
+    { label: 'Сумма расхода', value: formatMoney(plan.expenseTotal, currency.value) },
+    { label: 'Маржинальность', value: formatPercent(plan.marginPercent) },
+    { label: 'Доход (без НДС)', value: formatMoney(plan.incomeNet, currency.value) }
+  ]
+})
 </script>
 
 <template>
@@ -18,9 +27,7 @@ const currency = computed(() => props.data.deal.currencyId || 'BYN')
     <Header
       :title="data.deal.companyTitle || data.deal.title"
       subtitle="Подрядчик"
-      :currency="currency"
-      :totals="data.totals"
-      progress-kind="contractor"
+      :metrics="headerMetrics"
     />
 
     <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-3' }">
@@ -39,7 +46,5 @@ const currency = computed(() => props.data.deal.currencyId || 'BYN')
       :parent="data.parentClientDeal"
       :currency="currency"
     />
-
-    <Totals :totals="data.totals" :currency="currency" />
   </div>
 </template>

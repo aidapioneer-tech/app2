@@ -1,6 +1,6 @@
 # AGENTS.md — aida-app-money
 
-_Last reviewed: 2026-06-03_
+_Last reviewed: 2026-06-11_
 
 Контекст для AI-агентов и разработчиков, продолжающих этот проект. Прочти весь файл прежде чем что-то менять.
 
@@ -92,11 +92,12 @@ app/
 ├── components/Money/
 │   ├── Client.vue                — экран клиентской сделки (cat 2)
 │   ├── Contractor.vue            — экран сделки подряда (cat 3)
-│   ├── Header.vue                — шапка с числами + прогресс-бар
+│   ├── Header.vue                — шапка: 3 метрики + кнопка «Обновить» (presentation-only)
+│   ├── refresh.ts                — InjectionKey + тип контракта «обновить данные» (provide/inject)
 │   ├── PaymentsTable.vue         — 7-колоночная таблица платежей
-│   ├── ContractorBlock.vue       — раскрывающийся блок одного подряда
+│   ├── ContractorBlock.vue       — блок одного подряда (без аккордеона, цветной акцент по статусу)
 │   ├── ParentClientCard.vue      — карточка-ссылка на родителя (для contractor view)
-│   ├── Totals.vue                — нижний блок ПЛАН / ФАКТ
+│   ├── Totals.vue                — нижний блок ПЛАН / ФАКТ (СКРЫТ из вёрстки, формулы оставлены)
 │   └── format.ts                 — formatMoney/formatPercent/formatDate
 ├── types/index.d.ts              — типы DealMoneyResponse и Co
 └── utils/index.ts                — sleepAction
@@ -128,7 +129,12 @@ i18n/
 | НДС fallback на фронте | `calcPlanVat/calcPlanNet` в `PaymentsTable.vue`: если бэкенд не вернул `planVat`/`planNet` (> 0), считаем client-side. Временно до [Issue #7](https://github.com/aidapioneer-tech/app2/issues/7). |
 | НДС = 0 → не выдумывать | Бизнес-правило клиента: если `taxRate = 0` или не передан — НДС = 0, не пересчитываем. |
 | taxRate цепочка | `DealHeader.taxRate` → `Client.vue` / `Contractor.vue` → `PaymentsTable`; `ContractorBlock.taxRate` → `ContractorBlock.vue` → `PaymentsTable` |
-| Навигация к подряду | `ContractorBlock.vue → openDeal()` → `$b24.parent.openPath("/crm/deal/details/{id}/")` |
+| Навигация к подряду | `ContractorBlock.vue → openDeal()` → `$b24.slider.openPath($b24.slider.getUrl("/crm/deal/details/{id}/"))` |
+| Шапка (Header) | Presentation-only: получает `title/subtitle/metrics[]`. Клиент: Сумма сделки / Маржинальность / Доход клиента (всё `totals.plan`). Без разделения план/факт, без прогресс-бара. |
+| Кнопка «Обновить» | Контракт через provide/inject (`refresh.ts → moneyRefreshKey`). `index.vue` отдаёт `reloadAll`+`loading`; `Header.vue` инжектит и рисует `B24Button`. Повторный запрос не сбрасывает экран в скелетон (`v-if="loading && !data"`). |
+| Высота встройки | После каждого `load()` (и initial, и refresh) — `$b24.parent.fitWindow()` в `index.vue → fitFrame()`. Убирает внутренний скролл фрейма. Вызывать после `nextTick`. |
+| Итоговый блок План/Факт | `Totals.vue` скрыт из `Client.vue`/`Contractor.vue` по решению владельца. Файл и формулы оставлены. Доработка формул трекается отдельным Issue. |
+| Подрядчики (UI) | Без аккордеона — платежи всегда видны. Цветной левый бордер по статусу бейджа (success/warning/border). В шапке блока: название подрядчика + ссылка на сделку (`block.title`) + бейдж. |
 | Тип платежа | `paySystemId === 9` ⇒ предоплата (повторяет `Constants::isPrePaySystem`) |
 | Подряд-вкладка | Зеркальный экран + карточка клиентской сделки |
 | Колонки дат | Две: «Срок» (план) и «Получено» (факт) |
