@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import Header from './Header.vue'
 import PaymentsTable from './PaymentsTable.vue'
 import ContractorBlock from './ContractorBlock.vue'
-import Totals from './Totals.vue'
+import { buildHeaderMetrics } from './headerMetrics'
 
 const props = defineProps<{
   data: DealMoneyResponse
@@ -12,6 +12,8 @@ const props = defineProps<{
 
 const currency = computed(() => props.data.deal.currencyId || 'BYN')
 const contractors = computed(() => props.data.contractors ?? [])
+
+const headerMetrics = computed(() => buildHeaderMetrics(props.data.totals, currency.value, props.data.mode))
 </script>
 
 <template>
@@ -19,9 +21,7 @@ const contractors = computed(() => props.data.contractors ?? [])
     <Header
       :title="data.deal.companyTitle || data.deal.title"
       subtitle="Клиент"
-      :currency="currency"
-      :totals="data.totals"
-      progress-kind="client"
+      :metrics="headerMetrics"
     />
 
     <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-3' }">
@@ -45,7 +45,5 @@ const contractors = computed(() => props.data.contractors ?? [])
         :block="block"
       />
     </div>
-
-    <Totals :totals="data.totals" :currency="currency" />
   </div>
 </template>

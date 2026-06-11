@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { B24Frame } from '@bitrix24/b24jssdk'
-import { computed, onMounted } from 'vue'
+import { computed, nextTick, onMounted, provide } from 'vue'
 import { useB24 } from '~/composables/useB24'
 import { useDealMoney } from '~/composables/useDealMoney'
+import { moneyRefreshKey } from '~/components/Money/refresh'
 import MoneyClient from '~/components/Money/Client.vue'
 import MoneyContractor from '~/components/Money/Contractor.vue'
 
@@ -19,7 +20,9 @@ const dealId = computed<number>(() => {
   if (!isFrame.value) return 0
   const $b24 = b24Instance.get() as B24Frame
   const opts = ($b24.placement?.options ?? {}) as Record<string, unknown>
-  return Number(opts.ID ?? 0) || 0
+  const id = Number(opts.ID ?? 0)
+  // Только целое положительное — дробный/мусорный ID не уходит в REST.
+  return Number.isInteger(id) && id > 0 ? id : 0
 })
 
 const placementOk = computed<boolean>(() => {
@@ -28,12 +31,41 @@ const placementOk = computed<boolean>(() => {
   return $b24.placement?.title === 'CRM_DEAL_DETAIL_TAB'
 })
 
+/**
+ * Подогнать высоту встройки под содержимое — убирает внутренний скролл.
+ * Вызывать после рендера новых данных (nextTick), т.к. fitWindow меряет
+ * текущую высоту DOM. Сбой не критичен (в части размещений не отрабатывает).
+ */
+async function fitFrame(): Promise<void> {
+  const $b24 = b24Instance.get() as B24Frame | undefined
+  if (!$b24) return
+  await nextTick()
+  // ещё один кадр после nextTick — дать b24ui дорисовать карточки/бейджи
+  // до замера высоты, иначе fitWindow может «недомерить» и оставить скролл.
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  try {
+    await $b24.parent.fitWindow()
+  } catch (e) {
+    console.error('[index] fitWindow failed', e instanceof Error ? e.message : String(e))
+  }
+}
+
+/** Повторный запрос к серверу + подгонка высоты. Дёргается кнопкой «Обновить». */
+async function reloadAll(): Promise<void> {
+  if (!isFrame.value || dealId.value <= 0 || loading.value) return
+  await load(dealId.value)
+  await fitFrame()
+}
+
+provide(moneyRefreshKey, { refresh: reloadAll, busy: loading })
+
 onMounted(async () => {
   if (!isFrame.value) return
   if (dealId.value > 0) {
     await load(dealId.value)
-    const $b24 = b24Instance.get() as B24Frame
-    await $b24.parent.setTitle('Деньги')
+    const $b24 = b24Instance.get() as B24Frame | undefined
+    if ($b24) await $b24.parent.setTitle('Деньги')
+    await fitFrame()
   }
 })
 </script>
@@ -50,7 +82,7 @@ onMounted(async () => {
       </div>
 
       <template v-else>
-        <div v-if="loading" class="flex flex-col gap-3">
+        <div v-if="loading && !data" class="flex flex-col gap-3">
           <B24Skeleton class="h-24" />
           <B24Skeleton class="h-48" />
         </div>
