@@ -18,7 +18,11 @@ export function useDealMoney() {
       if (!b24) {
         throw new Error('Bitrix24 SDK не инициализирован')
       }
-      const response = await b24.callMethod(REST_METHOD, { dealId })
+      // restApi:v2 — актуальный вызов (b24.callMethod() помечен @deprecated, удаляется в 2.0.0).
+      const response = await b24.actions.v2.call.make({ method: REST_METHOD, params: { dealId } })
+      if (!response.isSuccess) {
+        throw new Error(response.getErrorMessages().join('; ') || 'REST-вызов вернул ошибку')
+      }
       const payload = response.getData() as { result?: DealMoneyResponse } | DealMoneyResponse
       const unwrapped = (payload as { result?: DealMoneyResponse }).result ?? (payload as DealMoneyResponse)
       data.value = unwrapped

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { B24Frame } from '@bitrix24/b24jssdk'
-import { computed, nextTick, onMounted, provide } from 'vue'
+import { computed, nextTick, onMounted, provide, ref } from 'vue'
 import { useB24 } from '~/composables/useB24'
 import { useDealMoney } from '~/composables/useDealMoney'
 import { moneyRefreshKey } from '~/components/Money/refresh'
@@ -13,6 +13,9 @@ useHead({ title: 'Деньги по сделке' })
 
 const b24Instance = useB24()
 const { data, loading, error, load } = useDealMoney()
+
+// Реальный контент-элемент — по нему меряем высоту фрейма (см. fitFrame).
+const contentEl = ref<HTMLElement | null>(null)
 
 const isFrame = computed(() => b24Instance.isInit())
 
@@ -33,20 +36,26 @@ const placementOk = computed<boolean>(() => {
 
 /**
  * Подогнать высоту встройки под содержимое — убирает внутренний скролл.
- * Вызывать после рендера новых данных (nextTick), т.к. fitWindow меряет
- * текущую высоту DOM. Сбой не критичен (в части размещений не отрабатывает).
+ *
+ * Важно: `fitWindow()` меряет высоту ДОКУМЕНТА, а наш контент живёт внутри
+ * dashboard-обёртки (`B24DashboardGroup`/`B24DashboardPanel`) с собственной
+ * высотой во весь вьюпорт и внутренним скроллом — поэтому fitWindow видел бы
+ * высоту вьюпорта, а не контента, и фрейм не рос. Меряем реальный
+ * контент-элемент (`contentEl`, с учётом его паддингов) и подгоняем фрейм по нему
+ * через `resizeWindowAuto(appNode)`. Вызывать после рендера данных (nextTick + кадр).
  */
 async function fitFrame(): Promise<void> {
   const $b24 = b24Instance.get() as B24Frame | undefined
   if (!$b24) return
   await nextTick()
-  // ещё один кадр после nextTick — дать b24ui дорисовать карточки/бейджи
-  // до замера высоты, иначе fitWindow может «недомерить» и оставить скролл.
+  // ещё один кадр после nextTick — дать b24ui дорисовать карточки/бейджи до замера.
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   try {
-    await $b24.parent.fitWindow()
+    const el = contentEl.value
+    if (el) await $b24.parent.resizeWindowAuto(el)
+    else await $b24.parent.fitWindow()
   } catch (e) {
-    console.error('[index] fitWindow failed', e instanceof Error ? e.message : String(e))
+    console.error('[index] resize frame failed', e instanceof Error ? e.message : String(e))
   }
 }
 
@@ -71,34 +80,38 @@ onMounted(async () => {
 </script>
 
 <template>
-  <B24DashboardPanel id="money" :b24ui="{ body: 'p-4 sm:pt-4 scrollbar-transparent gap-4' }">
+  <B24DashboardPanel id="money" :b24ui="{ body: 'p-0' }">
     <template #body>
-      <div v-if="!isFrame" class="text-(--ui-text-muted) text-sm">
-        Откройте приложение в карточке сделки Битрикс24.
-      </div>
-
-      <div v-else-if="!placementOk || dealId === 0" class="text-(--ui-text-muted) text-sm">
-        Это приложение работает только во вкладке карточки сделки (CRM_DEAL_DETAIL_TAB).
-      </div>
-
-      <template v-else>
-        <div v-if="loading && !data" class="flex flex-col gap-3">
-          <B24Skeleton class="h-24" />
-          <B24Skeleton class="h-48" />
+      <!-- contentEl: измеряемый контент-элемент. Паддинги здесь (а не на body
+           панели), чтобы resizeWindowAuto учитывал их в высоте фрейма. -->
+      <div ref="contentEl" class="p-4 sm:pt-4 flex flex-col gap-4">
+        <div v-if="!isFrame" class="text-(--ui-text-muted) text-sm">
+          Откройте приложение в карточке сделки Битрикс24.
         </div>
 
-        <B24Alert
-          v-else-if="error"
-          color="air-primary-alert"
-          title="Ошибка загрузки"
-          :description="error"
-        />
+        <div v-else-if="!placementOk || dealId === 0" class="text-(--ui-text-muted) text-sm">
+          Это приложение работает только во вкладке карточки сделки (CRM_DEAL_DETAIL_TAB).
+        </div>
 
-        <template v-else-if="data">
-          <MoneyClient v-if="data.mode === 'client'" :data="data" />
-          <MoneyContractor v-else :data="data" />
+        <template v-else>
+          <div v-if="loading && !data" class="flex flex-col gap-3">
+            <B24Skeleton class="h-24" />
+            <B24Skeleton class="h-48" />
+          </div>
+
+          <B24Alert
+            v-else-if="error"
+            color="air-primary-alert"
+            title="Ошибка загрузки"
+            :description="error"
+          />
+
+          <template v-else-if="data">
+            <MoneyClient v-if="data.mode === 'client'" :data="data" />
+            <MoneyContractor v-else :data="data" />
+          </template>
         </template>
-      </template>
+      </div>
     </template>
   </B24DashboardPanel>
 </template>
