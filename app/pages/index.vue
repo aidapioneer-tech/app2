@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { B24Frame } from '@bitrix24/b24jssdk'
-import { computed, nextTick, onMounted, provide, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import { useB24 } from '~/composables/useB24'
 import { useDealMoney } from '~/composables/useDealMoney'
 import { moneyRefreshKey } from '~/components/Money/refresh'
@@ -45,6 +45,7 @@ const placementOk = computed<boolean>(() => {
  * через `resizeWindowAuto(appNode)`. Вызывать после рендера данных (nextTick + кадр).
  */
 async function fitFrame(): Promise<void> {
+  if (!import.meta.client) return
   const $b24 = b24Instance.get() as B24Frame | undefined
   if (!$b24) return
   await nextTick()
@@ -57,6 +58,19 @@ async function fitFrame(): Promise<void> {
   } catch (e) {
     console.error('[index] resize frame failed', e instanceof Error ? e.message : String(e))
   }
+}
+
+// Пересчёт высоты при изменении размера контента (догрузка шрифтов/тостов,
+// смена ширины фрейма при открытии панелей CRM). resizeWindowAuto ставит и
+// ширину, поэтому без наблюдателя фрейм не адаптировался бы к ресайзу. Дебаунс
+// схлопывает пачку изменений (и параллельные «Обновить») в один вызов.
+let resizeObserver: ResizeObserver | null = null
+let fitTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleFit(): void {
+  if (fitTimer) clearTimeout(fitTimer)
+  fitTimer = setTimeout(() => {
+    void fitFrame()
+  }, 150)
 }
 
 /** Повторный запрос к серверу + подгонка высоты. Дёргается кнопкой «Обновить». */
@@ -76,6 +90,16 @@ onMounted(async () => {
     if ($b24) await $b24.parent.setTitle('Деньги')
     await fitFrame()
   }
+  // Следим за размером контента — авто-подгонка высоты/ширины фрейма.
+  if (import.meta.client && contentEl.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => scheduleFit())
+    resizeObserver.observe(contentEl.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (fitTimer) clearTimeout(fitTimer)
+  resizeObserver?.disconnect()
 })
 </script>
 
@@ -84,7 +108,7 @@ onMounted(async () => {
     <template #body>
       <!-- contentEl: измеряемый контент-элемент. Паддинги здесь (а не на body
            панели), чтобы resizeWindowAuto учитывал их в высоте фрейма. -->
-      <div ref="contentEl" class="p-4 sm:pt-4 flex flex-col gap-4">
+      <div ref="contentEl" class="p-4 sm:pt-4 flex flex-col gap-4 min-w-0">
         <div v-if="!isFrame" class="text-(--ui-text-muted) text-sm">
           Откройте приложение в карточке сделки Битрикс24.
         </div>
