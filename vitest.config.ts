@@ -10,6 +10,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['app/**/*.{test,spec}.ts']
+    // Помимо app/ ловим тесты в корневом tests/ — иначе CI молча пропустит их.
+    include: ['app/**/*.{test,spec}.ts', 'tests/**/*.{test,spec}.ts']
   }
 })

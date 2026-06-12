@@ -1,5 +1,7 @@
 # aida-app-money
 
+[![CI](https://github.com/aidapioneer-tech/app2/actions/workflows/ci.yml/badge.svg)](https://github.com/aidapioneer-tech/app2/actions/workflows/ci.yml)
+
 Облачное приложение Битрикс24, встраивается во вкладку карточки сделки (`CRM_DEAL_DETAIL_TAB`)
 и показывает плановые финансовые показатели сделки: сумму, доход без НДС,
 расходы по подрядчикам, маржу.
@@ -35,6 +37,10 @@ pnpm test:watch  # тесты в watch-режиме
 
 Либо одной командой через готовый скрипт: `scripts/test.sh` (Linux/macOS)
 или `scripts/test.ps1` (Windows) — установит зависимости и прогонит тесты.
+
+Прогнать **все** проверки локально, как в CI (lint → typecheck → test → generate):
+`scripts/check.sh` (Linux/macOS) или `scripts/check.ps1` (Windows). Те же шаги
+выполняет GitHub Actions (`.github/workflows/ci.yml`) на каждый PR.
 
 ## Архитектура
 

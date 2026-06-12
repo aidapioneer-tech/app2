@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Прогон всех проверок проекта одним запуском: lint -> typecheck -> build (+ test, если есть).
+# Зеркалит CI (.github/workflows/ci.yml): build = pnpm generate (статическая сборка).
 # Не останавливается на первой ошибке: прогоняет всё и печатает сводку в конце.
 # Запуск:  bash scripts/check.sh      (из любой директории)
 set -u
@@ -19,9 +20,9 @@ run() {
 
 run "lint"      "pnpm lint"
 run "typecheck" "pnpm typecheck"
-run "build"     "pnpm build"
+run "build"     "pnpm generate"
 
-# test — только если в package.json объявлен script "test" (Vitest появится по Issue #9)
+# test — только если в package.json объявлен script "test"
 if node -e "process.exit(require('./package.json').scripts && require('./package.json').scripts.test ? 0 : 1)" 2>/dev/null; then
   run "test" "pnpm test"
 fi

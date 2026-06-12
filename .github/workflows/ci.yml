@@ -32,6 +32,9 @@ jobs:
       # Экшены запинены по commit-SHA (supply-chain), версия — в комментарии.
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          # CI не делает git push — токен в .git/config не нужен (hardening).
+          persist-credentials: false
 
       - name: Setup pnpm
         # version берётся из поля packageManager в package.json
@@ -62,6 +65,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          # CI не делает git push — токен в .git/config не нужен (hardening).
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -88,6 +94,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          # CI не делает git push — токен в .git/config не нужен (hardening).
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -105,4 +114,6 @@ jobs:
       - name: Build
         run: pnpm generate
         env:
-          NUXT_PUBLIC_REPORT_ID: ${{ vars.NUXT_PUBLIC_REPORT_ID }}
+          # Те же переменные, что и в deploy.yml, — чтобы CI-сборка совпадала с прод.
+          NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
+          NUXT_APP_BASE_URL: ${{ vars.NUXT_APP_BASE_URL }}
