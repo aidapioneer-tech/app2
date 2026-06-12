@@ -1,9 +1,22 @@
 import type { B24FrameQueryParams, LoggerInterface } from '@bitrix24/b24jssdk'
-import { B24Frame, LoggerFactory, Result, SdkError, initializeB24Frame, useB24Helper, LoadDataType } from '@bitrix24/b24jssdk'
+import { B24Frame, LoggerFactory, Result, initializeB24Frame, useB24Helper, LoadDataType } from '@bitrix24/b24jssdk'
 
 let $b24: undefined | B24Frame = undefined
 let $b24Helper: undefined | object = undefined
 const type = ref<'undefined' | 'B24Frame'>('undefined')
+
+/**
+ * Результат инициализации SDK:
+ * - `ready`    — SDK поднят, приложение работает внутри фрейма Bitrix24;
+ * - `no-frame` — приложение открыто вне фрейма Bitrix24 (штатный сценарий,
+ *                не ошибка): информируем пользователя, где его открывать;
+ * - `error`    — реальный сбой инициализации SDK; `message` — текст для UI,
+ *                технические детали уходят в `console.error`.
+ */
+export type InitResult
+  = | { status: 'ready' }
+    | { status: 'no-frame' }
+    | { status: 'error', message: string }
 
 export const useB24 = () => {
   const b24Config = {}
@@ -49,31 +62,28 @@ export const useB24 = () => {
     return result
   }
 
-  async function init(): Promise<Result> {
+  async function init(): Promise<InitResult> {
+    // try to detect by Frame Params
+    const queryParams: B24FrameQueryParams = {
+      DOMAIN: null,
+      PROTOCOL: false,
+      APP_SID: null,
+      LANG: null
+    }
+
+    if (window.name) {
+      const [domain, appSid] = window.name.split('|')
+      queryParams.DOMAIN = domain
+      queryParams.APP_SID = appSid
+    }
+
+    if (!queryParams.DOMAIN || !queryParams.APP_SID) {
+      // Открыто вне фрейма Bitrix24 — штатный сценарий, а не сбой.
+      // Приложение работает только встроенным в портал.
+      return { status: 'no-frame' }
+    }
+
     try {
-      // try to detect by Frame Params
-      const queryParams: B24FrameQueryParams = {
-        DOMAIN: null,
-        PROTOCOL: false,
-        APP_SID: null,
-        LANG: null
-      }
-
-      if (window.name) {
-        const [domain, appSid] = window.name.split('|')
-        queryParams.DOMAIN = domain
-        queryParams.APP_SID = appSid
-      }
-
-      if (!queryParams.DOMAIN || !queryParams.APP_SID) {
-        // console.error('[docs] Unable to initialize Bitrix24Frame library!')
-        throw new SdkError({
-          code: 'JSSDK_CLIENT_SIDE_WARNING',
-          description: 'Well done! Now paste this URL into the B24 app settings',
-          status: 500
-        })
-      }
-
       // now init b24Frame
       const b24 = await initializeB24Frame(b24Config)
       await initB24Helper(
@@ -88,12 +98,20 @@ export const useB24 = () => {
       )
 
       $b24Helper = getB24Helper()
-      return set(b24)
-    } catch {
-      // set(undefined)
+      set(b24)
+      return { status: 'ready' }
+    } catch (error) {
+      // Реальный сбой инициализации SDK. Раньше catch молча проглатывал
+      // ошибку и init() возвращал успех — сообщение о сбое не доходило до UI.
+      // Технические детали — в консоль, пользователю — общий текст.
+      console.error('[useB24] Ошибка инициализации Bitrix24 SDK:', error)
+      $b24Helper = undefined
+      set(undefined)
+      return {
+        status: 'error',
+        message: 'Не удалось подключиться к Битрикс24. Обратитесь к администратору.'
+      }
     }
-
-    return new Result()
   }
 
   function isFrame() {

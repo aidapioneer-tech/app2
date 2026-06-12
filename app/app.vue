@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Result } from '@bitrix24/b24jssdk'
 import type { ToasterProps } from '@bitrix24/b24ui-nuxt'
 import { ref, provide, readonly } from 'vue'
 import * as locales from '@bitrix24/b24ui-nuxt/locale'
@@ -32,13 +31,21 @@ useSeoMeta({ title })
 provide('isLoading', readonly(isLoading))
 
 onMounted(async () => {
-  const result: Result = await b24Instance.init()
+  const result = await b24Instance.init()
 
-  if (!result.isSuccess) {
+  if (result.status === 'error') {
     toast.add({
       title: 'Ошибка',
-      description: result.getErrorMessages().join('\n'),
+      description: result.message,
       color: 'air-primary-alert',
+      icon: CloudErrorIcon
+    })
+  } else if (result.status === 'no-frame') {
+    // Открыто вне фрейма Bitrix24 — это не сбой, а подсказка где открывать.
+    toast.add({
+      title: 'Откройте в Битрикс24',
+      description: 'Приложение работает внутри портала Битрикс24 — на вкладке «Деньги» в карточке сделки.',
+      color: 'air-primary-warning',
       icon: CloudErrorIcon
     })
   }

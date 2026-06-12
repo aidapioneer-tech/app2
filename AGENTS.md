@@ -1,6 +1,6 @@
 # AGENTS.md — aida-app-money
 
-_Last reviewed: 2026-06-11_
+_Last reviewed: 2026-06-12_
 
 Контекст для AI-агентов и разработчиков, продолжающих этот проект. Прочти весь файл прежде чем что-то менять.
 
@@ -87,7 +87,7 @@ app/
 ├── layouts/
 │   └── clear.vue                 — единственный layout (без сайдбара!)
 ├── composables/
-│   ├── useB24.ts                 — оригинал из шаблона, не трогали
+│   ├── useB24.ts                 — на основе шаблона; init() возвращает InitResult (ready/no-frame/error)
 │   └── useDealMoney.ts           — единственный REST-вызов
 ├── components/Money/
 │   ├── Client.vue                — экран клиентской сделки (cat 2)
