@@ -27,9 +27,14 @@ shef:reportbuilder.api.dealMoney.get { dealId }
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:3000
+pnpm dev         # http://localhost:3000
 pnpm build
+pnpm test        # юнит-тесты (Vitest), разовый прогон
+pnpm test:watch  # тесты в watch-режиме
 ```
+
+Либо одной командой через готовый скрипт: `scripts/test.sh` (Linux/macOS)
+или `scripts/test.ps1` (Windows) — установит зависимости и прогонит тесты.
 
 ## Архитектура
 
