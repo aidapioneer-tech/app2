@@ -35,14 +35,21 @@ const placementOk = computed<boolean>(() => {
 })
 
 /**
+ * Запас по высоте фрейма (+10%). Измеренного `scrollHeight` контента иногда не
+ * хватает (хром dashboard-обёртки, бордеры) — и остаётся внутренний скролл.
+ */
+const HEIGHT_BUFFER = 1.1
+
+/**
  * Подогнать высоту встройки под содержимое — убирает внутренний скролл.
  *
  * Важно: `fitWindow()` меряет высоту ДОКУМЕНТА, а наш контент живёт внутри
  * dashboard-обёртки (`B24DashboardGroup`/`B24DashboardPanel`) с собственной
  * высотой во весь вьюпорт и внутренним скроллом — поэтому fitWindow видел бы
- * высоту вьюпорта, а не контента, и фрейм не рос. Меряем реальный
- * контент-элемент (`contentEl`, с учётом его паддингов) и подгоняем фрейм по нему
- * через `resizeWindowAuto(appNode)`. Вызывать после рендера данных (nextTick + кадр).
+ * высоту вьюпорта, а не контента. Меряем реальный контент-элемент (`contentEl`,
+ * с учётом паддингов), добавляем запас `HEIGHT_BUFFER` и ставим высоту фрейма
+ * явно через `resizeWindow(width, height)`. Фолбэк — `fitWindow()`.
+ * Вызывать после рендера данных (nextTick + кадр).
  */
 async function fitFrame(): Promise<void> {
   if (!import.meta.client) return
@@ -53,16 +60,23 @@ async function fitFrame(): Promise<void> {
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   try {
     const el = contentEl.value
-    if (el) await $b24.parent.resizeWindowAuto(el)
-    else await $b24.parent.fitWindow()
+    if (el) {
+      const width = document.documentElement.clientWidth || el.scrollWidth
+      const height = Math.ceil(el.scrollHeight * HEIGHT_BUFFER)
+      if (width > 0 && height > 0) {
+        await $b24.parent.resizeWindow(width, height)
+        return
+      }
+    }
+    await $b24.parent.fitWindow()
   } catch (e) {
     console.error('[index] resize frame failed', e instanceof Error ? e.message : String(e))
   }
 }
 
 // Пересчёт высоты при изменении размера контента (догрузка шрифтов/тостов,
-// смена ширины фрейма при открытии панелей CRM). resizeWindowAuto ставит и
-// ширину, поэтому без наблюдателя фрейм не адаптировался бы к ресайзу. Дебаунс
+// смена ширины фрейма при открытии панелей CRM). resizeWindow ставит ширину
+// явно, поэтому без наблюдателя фрейм не адаптировался бы к ресайзу. Дебаунс
 // схлопывает пачку изменений (и параллельные «Обновить») в один вызов.
 let resizeObserver: ResizeObserver | null = null
 let fitTimer: ReturnType<typeof setTimeout> | null = null
@@ -104,11 +118,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <B24DashboardPanel id="money" :b24ui="{ body: 'p-0' }">
+  <B24DashboardPanel id="money" :b24ui="{ body: 'p-0 sm:p-0' }">
     <template #body>
-      <!-- contentEl: измеряемый контент-элемент. Паддинги здесь (а не на body
-           панели), чтобы resizeWindowAuto учитывал их в высоте фрейма. -->
-      <div ref="contentEl" class="p-4 sm:pt-4 flex flex-col gap-4 min-w-0">
+      <!-- contentEl: измеряемый контент-элемент — по его scrollHeight fitFrame
+           ставит высоту фрейма (см. fitFrame). Паддинги body панели сняты. -->
+      <div ref="contentEl" class="flex flex-col gap-4 min-w-0">
         <div v-if="!isFrame" class="text-(--ui-text-muted) text-sm">
           Откройте приложение в карточке сделки Битрикс24.
         </div>
