@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref } from 'vu
 import { useB24 } from '~/composables/useB24'
 import { useDealMoney } from '~/composables/useDealMoney'
 import { moneyRefreshKey } from '~/components/Money/refresh'
+import { computeFrameSize } from '~/utils/frameSize'
 import MoneyClient from '~/components/Money/Client.vue'
 import MoneyContractor from '~/components/Money/Contractor.vue'
 
@@ -34,21 +35,20 @@ const placementOk = computed<boolean>(() => {
   return $b24.placement?.title === 'CRM_DEAL_DETAIL_TAB'
 })
 
-/**
- * Запас по высоте фрейма (+10%). Измеренного `scrollHeight` контента иногда не
- * хватает (хром dashboard-обёртки, бордеры) — и остаётся внутренний скролл.
- */
-const HEIGHT_BUFFER = 1.1
+// Последние выставленные размеры фрейма — чтобы не слать resizeWindow повторно
+// теми же значениями (иначе ResizeObserver↔resize могут зациклиться).
+let lastFrameWidth = 0
+let lastFrameHeight = 0
 
 /**
  * Подогнать высоту встройки под содержимое — убирает внутренний скролл.
  *
- * Важно: `fitWindow()` меряет высоту ДОКУМЕНТА, а наш контент живёт внутри
- * dashboard-обёртки (`B24DashboardGroup`/`B24DashboardPanel`) с собственной
- * высотой во весь вьюпорт и внутренним скроллом — поэтому fitWindow видел бы
- * высоту вьюпорта, а не контента. Меряем реальный контент-элемент (`contentEl`,
- * с учётом паддингов), добавляем запас `HEIGHT_BUFFER` и ставим высоту фрейма
- * явно через `resizeWindow(width, height)`. Фолбэк — `fitWindow()`.
+ * Важно: `fitWindow()` меряет высоту ДОКУМЕНТА, а контент живёт внутри
+ * dashboard-обёртки (`B24DashboardGroup`/`B24DashboardPanel`) во весь вьюпорт с
+ * внутренним скроллом — fitWindow видел бы вьюпорт, а не контент. Считаем размер
+ * по реальному контент-элементу (`computeFrameSize` → scrollHeight + HEIGHT_BUFFER_PERCENT%)
+ * и ставим явно через `resizeWindow`. Фолбэк — `fitWindow()`.
+ * Повторный вызов теми же размерами пропускаем (терминируем петлю ResizeObserver).
  * Вызывать после рендера данных (nextTick + кадр).
  */
 async function fitFrame(): Promise<void> {
@@ -60,13 +60,13 @@ async function fitFrame(): Promise<void> {
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   try {
     const el = contentEl.value
-    if (el) {
-      const width = document.documentElement.clientWidth || el.scrollWidth
-      const height = Math.ceil(el.scrollHeight * HEIGHT_BUFFER)
-      if (width > 0 && height > 0) {
-        await $b24.parent.resizeWindow(width, height)
-        return
-      }
+    const size = el ? computeFrameSize(el, document.documentElement.clientWidth) : null
+    if (size) {
+      if (size.width === lastFrameWidth && size.height === lastFrameHeight) return
+      lastFrameWidth = size.width
+      lastFrameHeight = size.height
+      await $b24.parent.resizeWindow(size.width, size.height)
+      return
     }
     await $b24.parent.fitWindow()
   } catch (e) {
@@ -121,7 +121,8 @@ onBeforeUnmount(() => {
   <B24DashboardPanel id="money" :b24ui="{ body: 'p-0 sm:p-0' }">
     <template #body>
       <!-- contentEl: измеряемый контент-элемент — по его scrollHeight fitFrame
-           ставит высоту фрейма (см. fitFrame). Паддинги body панели сняты. -->
+           ставит высоту фрейма (см. fitFrame). Паддинги сняты намеренно (правка
+           владельца): отступы между блоками даёт gap-4, запас по высоте — +10%. -->
       <div ref="contentEl" class="flex flex-col gap-4 min-w-0">
         <div v-if="!isFrame" class="text-(--ui-text-muted) text-sm">
           Откройте приложение в карточке сделки Битрикс24.
