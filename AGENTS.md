@@ -152,7 +152,7 @@ i18n/
 - `app/composables/{useDashboard.ts,useDealStats/}`
 - `server/api/*` (4 mock-эндпоинта)
 - `tools/translate.ui.ts`
-- `.github/workflows/{ci,deploy}.yml` (template-specific, релизят на bitrix24.github.io)
+- `.github/workflows/*` из шаблона (template-specific, релизят на bitrix24.github.io) — заменены своими `ci.yml` и `deploy.yml`
 - 18 локалей кроме `ru.json`
 - Зависимости: `openai`, `tsx`, `luxon`, `@types/luxon`, `zod`, `@tanstack/*`, `@unovis/*` (последние два — TODO проверить, что не нужны для b24ui)
 
@@ -195,6 +195,7 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 ✅ REST-метод протестирован на портале: `BX.ajax.runAction('shef:reportbuilder.api.dealMoney.get', { data: { dealId: 129 } })` возвращает корректный JSON, числа сходятся.
 ✅ Frontend запускается локально (`pnpm dev`) — пользователь подтвердил.
 ✅ CI/CD deploy workflow добавлен (`.github/workflows/deploy.yml`) — pnpm + rsync, lint/typecheck, backup, smoke test.
+✅ CI workflow добавлен (`.github/workflows/ci.yml`) — lint/typecheck/test/build на каждый PR в `main`. Чтобы CI блокировал мерж, в Settings репозитория включить защиту ветки `main` (Required status checks: `Lint & Typecheck`, `Tests`, `Build`).
 
 ❌ Числа из исходного мокапа (Брестский мясокомбинат: 23411.56 / 15361.25 / 10007.50) ещё не сверены на полном UI.
 ❌ Cat 3 (подрядчик-вью) не проверена end-to-end.

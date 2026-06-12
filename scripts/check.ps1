@@ -1,4 +1,5 @@
 # Прогон всех проверок проекта одним запуском: lint -> typecheck -> build (+ test, если есть).
+# Зеркалит CI (.github/workflows/ci.yml): build = pnpm generate (статическая сборка).
 # Не останавливается на первой ошибке: прогоняет всё и печатает сводку в конце.
 # Запуск:  powershell -ExecutionPolicy Bypass -File scripts\check.ps1
 $ErrorActionPreference = "Continue"
@@ -19,9 +20,9 @@ function Run-Step($name, [scriptblock]$cmd) {
 
 Run-Step "lint"      { pnpm lint }
 Run-Step "typecheck" { pnpm typecheck }
-Run-Step "build"     { pnpm build }
+Run-Step "build"     { pnpm generate }
 
-# test — только если в package.json объявлен script "test" (Vitest появится по Issue #9)
+# test — только если в package.json объявлен script "test"
 $pkg = Get-Content -Raw package.json | ConvertFrom-Json
 if ($pkg.scripts.test) {
   Run-Step "test" { pnpm test }

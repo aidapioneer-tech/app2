@@ -14,7 +14,8 @@
 
 ## Процесс валидации PR
 
-- Перед созданием PR убедиться, что `pnpm lint` и `pnpm typecheck` проходят без ошибок.
+- Перед созданием PR убедиться, что `pnpm lint` и `pnpm typecheck` проходят без ошибок (локально всё сразу — `scripts/check.sh` / `scripts/check.ps1`).
+- На каждый PR автоматически запускается CI (`.github/workflows/ci.yml`): lint, typecheck, test, build. Мерж — после зелёного CI.
 - PR описывается понятно: что сделано и зачем.
 
 ## Мерж
