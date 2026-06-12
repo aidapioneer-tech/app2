@@ -4,13 +4,15 @@ import { computed } from 'vue'
 import Header from './Header.vue'
 import PaymentsTable from './PaymentsTable.vue'
 import ParentClientCard from './ParentClientCard.vue'
-import Totals from './Totals.vue'
+import { buildHeaderMetrics } from './headerMetrics'
 
 const props = defineProps<{
   data: DealMoneyResponse
 }>()
 
 const currency = computed(() => props.data.deal.currencyId || 'BYN')
+
+const headerMetrics = computed(() => buildHeaderMetrics(props.data.totals, currency.value, props.data.mode))
 </script>
 
 <template>
@@ -18,9 +20,7 @@ const currency = computed(() => props.data.deal.currencyId || 'BYN')
     <Header
       :title="data.deal.companyTitle || data.deal.title"
       subtitle="Подрядчик"
-      :currency="currency"
-      :totals="data.totals"
-      progress-kind="contractor"
+      :metrics="headerMetrics"
     />
 
     <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-3' }">
@@ -39,7 +39,5 @@ const currency = computed(() => props.data.deal.currencyId || 'BYN')
       :parent="data.parentClientDeal"
       :currency="currency"
     />
-
-    <Totals :totals="data.totals" :currency="currency" />
   </div>
 </template>

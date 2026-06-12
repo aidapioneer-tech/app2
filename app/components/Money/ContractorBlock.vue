@@ -1,36 +1,37 @@
 <script setup lang="ts">
 import type { ContractorBlock as ContractorBlockType } from '~/types'
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import PaymentsTable from './PaymentsTable.vue'
-import { formatMoney, formatPercent } from './format'
 import { useB24 } from '~/composables/useB24'
-import ChevronDownIcon from '@bitrix24/b24icons-vue/actions/ChevronDownIcon'
-import ChevronRightLIcon from '@bitrix24/b24icons-vue/outline/ChevronRightLIcon'
 
 const props = defineProps<{
   block: ContractorBlockType
 }>()
 
-const open = ref(false)
 const b24Instance = useB24()
 
-const paidPercent = computed(() => {
-  if (props.block.totals.planTotal <= 0) return 0
-  return Math.round(props.block.totals.factTotal / props.block.totals.planTotal * 1000) / 10
-})
+/** Цвета бейджа из air-палитры b24ui (подмножество, которое мы используем). */
+type BadgeColor = 'air-primary-success' | 'air-primary-warning' | 'air-secondary'
 
-const badgeMeta = computed<{ label: string, color: string }>(() => {
+/**
+ * Единый источник вида блока по статусу оплаты подрядчика:
+ * текст бейджа + цвет бейджа + цвет левого акцента карточки.
+ * Один switch — чтобы три значения не разъезжались при добавлении статусов.
+ */
+const status = computed<{ label: string, color: BadgeColor, accentClass: string }>(() => {
   switch (props.block.badge) {
-    case 'paidByAct': return { label: 'Оплачено', color: 'air-primary-success' as const }
-    case 'partial': return { label: 'Частично', color: 'air-primary-warning' as const }
-    default: return { label: 'Не начато', color: 'air-secondary' as const }
+    case 'paidByAct':
+      return { label: 'Оплачено', color: 'air-primary-success', accentClass: 'border-l-(--ui-color-accent-main-success)' }
+    case 'partial':
+      return { label: 'Частично', color: 'air-primary-warning', accentClass: 'border-l-(--ui-color-accent-main-warning)' }
+    default:
+      return { label: 'Не начато', color: 'air-secondary', accentClass: 'border-l-(--ui-border)' }
   }
 })
 
 const contractorTaxRate = computed(() => props.block.taxRate ?? 0)
 
-async function openDeal(event: MouseEvent) {
-  event.stopPropagation()
+async function openDeal() {
   if (!Number.isInteger(props.block.dealId) || props.block.dealId <= 0) return
   const $b24 = b24Instance.get()
   if (!$b24) return
@@ -44,46 +45,33 @@ async function openDeal(event: MouseEvent) {
 </script>
 
 <template>
-  <B24Card :b24ui="{ body: 'p-0' }">
+  <B24Card :b24ui="{ body: 'p-0' }" :class="['border-l-4', status.accentClass]">
     <template #default>
-      <button
-        type="button"
-        class="w-full flex items-center gap-3 p-4 text-left hover:bg-(--ui-bg-elevated) transition-colors"
-        @click="open = !open"
-      >
-        <component :is="open ? ChevronDownIcon : ChevronRightLIcon" class="size-4 shrink-0 text-(--ui-text-muted)" />
-
-        <div class="flex flex-col min-w-0 flex-1">
-          <span class="text-sm font-medium truncate">{{ block.companyTitle || block.title }}</span>
+      <div class="flex items-center gap-3 p-4 bg-(--ui-bg-elevated)">
+        <div class="flex flex-col min-w-0 flex-1 gap-0.5">
+          <span class="text-sm font-medium truncate">
+            {{ block.companyTitle || block.title || 'Подрядчик' }}
+          </span>
           <button
             type="button"
-            class="text-xs text-(--ui-text-muted) hover:text-(--ui-color-accent-main) hover:underline w-fit"
+            class="text-xs text-(--ui-text-muted) hover:text-(--ui-color-accent-main) hover:underline w-fit max-w-full truncate text-left"
             @click="openDeal"
           >
-            Сделка #{{ block.dealId }} ↗
+            {{ block.title || `Сделка #${block.dealId}` }} ↗
           </button>
         </div>
 
-        <div class="hidden md:flex flex-col items-end text-xs text-(--ui-text-muted) shrink-0">
-          <span>План: {{ formatMoney(block.totals.planTotal, block.currencyId) }}</span>
-          <span>Факт: {{ formatMoney(block.totals.factTotal, block.currencyId) }}</span>
-        </div>
-
-        <span class="text-sm tabular-nums shrink-0 w-14 text-right">
-          {{ formatPercent(paidPercent) }}
-        </span>
-
         <B24Badge
-          :color="badgeMeta.color as any"
+          :color="status.color"
           variant="soft"
           size="sm"
           class="shrink-0"
         >
-          {{ badgeMeta.label }}
+          {{ status.label }}
         </B24Badge>
-      </button>
+      </div>
 
-      <div v-if="open" class="border-t border-(--ui-border) p-4">
+      <div class="border-t border-(--ui-border) p-4">
         <PaymentsTable
           :payments="block.payments"
           :currency="block.currencyId"
