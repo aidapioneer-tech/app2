@@ -1,75 +1,53 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { MoneyTotals } from '~/types'
-import { formatMoney, formatPercent } from './format'
+import type { HeaderMetric } from './headerMetrics'
+import { computed, inject } from 'vue'
+import Refresh1Icon from '@bitrix24/b24icons-vue/actions/Refresh1Icon'
+import { moneyRefreshKey } from './refresh'
 
-const props = defineProps<{
+defineProps<{
   title: string
   subtitle: string
-  currency: string
-  totals: MoneyTotals
-  /**
-   * 'client' — прогресс показывает «Получено X из Y» (доход).
-   * 'contractor' — «Выплачено X из Y» (расход).
-   */
-  progressKind: 'client' | 'contractor'
+  /** Ключевые цифры шапки. Каждый блок — подпись + значение. */
+  metrics: HeaderMetric[]
 }>()
 
-const planGross = computed(() =>
-  props.progressKind === 'client'
-    ? props.totals.plan.incomeGross
-    : props.totals.plan.expenseTotal
-)
-const factGross = computed(() =>
-  props.progressKind === 'client'
-    ? props.totals.fact.incomeGross
-    : props.totals.fact.expenseTotal
-)
-const progressPercent = computed(() =>
-  props.progressKind === 'client'
-    ? props.totals.progress.incomeReceivedPercent
-    : props.totals.progress.expensePaidPercent
-)
-const progressLabel = computed(() =>
-  props.progressKind === 'client' ? 'Получено' : 'Выплачено'
-)
+const refreshApi = inject(moneyRefreshKey, null)
+const busy = computed(() => refreshApi?.busy.value ?? false)
+
+function onRefresh(): void {
+  // Промис намеренно не ждём здесь — состояние крутилки/блокировки идёт через busy.
+  void refreshApi?.refresh()
+}
 </script>
 
 <template>
-  <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-3' }">
+  <B24Card :b24ui="{ body: 'p-5 flex flex-col gap-4' }">
     <template #default>
-      <div class="flex flex-col gap-1">
-        <span class="text-xs text-(--ui-text-muted) uppercase tracking-wide">{{ subtitle }}</span>
-        <span class="text-lg font-medium">{{ title }}</span>
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex flex-col gap-1 min-w-0">
+          <span class="text-xs text-(--ui-text-muted) uppercase tracking-wide">{{ subtitle }}</span>
+          <span class="text-lg font-medium truncate">{{ title }}</span>
+        </div>
+
+        <B24Button
+          v-if="refreshApi"
+          :icon="Refresh1Icon"
+          color="air-secondary"
+          size="sm"
+          :loading="busy"
+          :disabled="busy"
+          class="shrink-0"
+          @click="onRefresh"
+        >
+          Обновить
+        </B24Button>
       </div>
 
-      <div class="flex flex-wrap items-baseline gap-x-8 gap-y-2 mt-2">
-        <div class="flex flex-col">
-          <span class="text-xs text-(--ui-text-muted)">Доход план</span>
-          <span class="text-2xl font-semibold">{{ formatMoney(planGross, currency) }}</span>
+      <div class="flex flex-wrap items-baseline gap-x-10 gap-y-3">
+        <div v-for="m in metrics" :key="m.label" class="flex flex-col">
+          <span class="text-xs text-(--ui-text-muted)">{{ m.label }}</span>
+          <span class="text-2xl font-semibold tabular-nums">{{ m.value }}</span>
         </div>
-        <div class="flex flex-col">
-          <span class="text-xs text-(--ui-text-muted)">Маржа план</span>
-          <span class="text-xl font-medium">{{ formatPercent(totals.plan.marginPercent) }}</span>
-        </div>
-        <div class="flex flex-col">
-          <span class="text-xs text-(--ui-text-muted)">Маржа факт</span>
-          <span class="text-xl font-medium">{{ formatPercent(totals.fact.marginPercent) }}</span>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-1 mt-2">
-        <div class="flex justify-between text-xs">
-          <span class="text-(--ui-text-muted)">
-            {{ progressLabel }}: {{ formatMoney(factGross, currency) }} из {{ formatMoney(planGross, currency) }}
-          </span>
-          <span class="text-(--ui-text-muted)">{{ formatPercent(progressPercent) }}</span>
-        </div>
-        <B24Progress
-          :model-value="progressPercent"
-          size="xs"
-          :color="progressPercent >= 99 ? 'air-primary-success' : 'air-primary'"
-        />
       </div>
     </template>
   </B24Card>
