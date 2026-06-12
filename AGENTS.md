@@ -217,9 +217,19 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 
 - **PHP**: `declare(strict_types=1)`, namespace `\Shef\ReportBuilder\Controllers`, наследоваться от `\Bitrix\Main\Engine\Controller`. Action назван `getAction()` чтобы REST-метод был `dealMoney.get`.
 - **TS/Vue**: Composition API, `<script setup lang="ts">`. Без emoji в UI. Числа форматировать через `formatMoney` (split + space-separator). Без `replace('белорусских рублей', 'бел. руб')` костыля.
+- **Импорты типов** (из b24ui): `import type { X }` — отдельной строкой от рантайм-импортов. Так уже написаны компоненты Money/*.
+- **Дефолты пропсов** (из b24ui): для опциональных пропсов с рантайм-значением — `withDefaults()`; для документации значения — JSDoc `@defaultValue`. (Прим.: `effectiveTaxRate` сейчас нормализует `taxRate?` вручную — при рефакторе можно перейти на `withDefaults`.)
+- **Конвенциональные коммиты** (из b24ui): `type(Scope): описание` — `feat(money): …`, `fix(Header): …`, `refactor(backend): …`. Скоуп — модуль/компонент.
+- **Доступность (a11y)**: интерактив — на нативных элементах (`<button type="button">`, не клики на `<div>`); сохранять видимый фокус. Образцы — кнопка «Обновить» в `Header.vue`, ссылка на сделку в `ContractorBlock.vue`.
 - **i18n**: только `ru`. Все тексты в шаблонах захардкожены — i18n-ключи можно не использовать.
-- **Стили**: tailwind utility classes + `@bitrix24/b24ui-nuxt` компоненты (`B24Card`, `B24Badge`, `B24Progress`, `B24Skeleton`, `B24Alert`). CSS-переменные дизайн-системы — `var(--ui-text-muted)`, `var(--ui-bg-elevated)`, `var(--ui-color-accent-main-success/alert)`.
+- **Стили**: tailwind utility classes + `@bitrix24/b24ui-nuxt` компоненты (`B24Card`, `B24Badge`, `B24Progress`, `B24Skeleton`, `B24Alert`). CSS-переменные дизайн-системы — `text-(--ui-text-muted)`, `bg-(--ui-bg-elevated)`, `text-(--ui-color-accent-main-success/alert)`. _Прим.:_ b24ui рекомендует семантические утилити-классы (`text-default`, `bg-elevated`) — если появятся в апгрейде пакета, предпочитать их синтаксису `*-(--ui-*)`.
 - **Цветовой код**: только зелёный (получено / оплачено), красный (просрочено), серый (ожидание / muted). Без других акцентов. **Исключение**: левый бордер блока подрядчика для статуса «Частично» — оранжевый (`--ui-color-accent-main-warning`), как статус-индикатор (не декоративный акцент).
+
+### Тестирование
+
+- **Vitest** — модульные тесты для чистой логики: `format.ts`, `headerMetrics.ts`, и подобные извлечённые функции (например, маппинг статуса подрядчика). Чистую логику выносить из `.vue` в `.ts` — так она тестируется без монтирования.
+- **Компоненты** — `@vue/test-utils`: рендер по props/inject и ключевое поведение (напр. кнопка «Обновить» дёргает inject; `ContractorBlock` рендерит платежи без аккордеона). Где уместно — snapshot- и a11y-проверки (из b24ui).
+- **Запуск**: `pnpm test` (разовый) / `pnpm test:watch`; полный прогон — `scripts/check.sh` (Linux) и `scripts/check.ps1` (Windows). Цель скриптов — один запуск отдаёт результат, без ручного набора команд.
 
 ### Зависимости
 
