@@ -37,9 +37,41 @@ describe('buildHeaderMetrics', () => {
     expect(metrics[2]?.value).toBe('13 111,00 BYN')
   })
 
-  it('прибыль отличается от выручки-без-НДС при наличии расходов', () => {
-    const [, , third] = buildHeaderMetrics(makeTotals(), 'BYN', 'client')
-    // incomeNet = 14 496, но в шапке показываем profit = 13 111 — не равны.
-    expect(third?.value).not.toBe('14 496,00 BYN')
+  it('ровно 3 метрики, порядок фиксирован (client и contractor)', () => {
+    expect(buildHeaderMetrics(makeTotals(), 'BYN', 'client')).toHaveLength(3)
+    expect(buildHeaderMetrics(makeTotals(), 'BYN', 'contractor')).toHaveLength(3)
+  })
+
+  it('НДС > 0: прибыль отличается и от суммы сделки (с НДС), и от выручки без НДС', () => {
+    // incomeGross 17 395 (с НДС 20%), incomeNet 14 496 (без НДС), подрядчик 1 385 → profit 13 111.
+    // Три соседних числа не совпадают — метрика «Прибыль» несёт собственный смысл.
+    const totals = makeTotals({ incomeGross: 17395, incomeNet: 14496, expenseTotal: 1385, profit: 13111 })
+    const [first, , third] = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(first?.value).toBe('17 395,00 BYN')
+    expect(third?.value).toBe('13 111,00 BYN')
+  })
+
+  it('убыток: подрядчик съел больше выручки → profit и маржа отрицательные', () => {
+    const totals = makeTotals({ incomeNet: 14496, expenseTotal: 14770, profit: -274, marginPercent: -1.9 })
+    const [, margin, third] = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(margin).toEqual({ label: 'Маржинальность', value: '-1.9%' })
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '-274,00 BYN' })
+  })
+
+  it('profit = 0 (подрядчик съел ровно всю выручку)', () => {
+    const [, , third] = buildHeaderMetrics(makeTotals({ profit: 0, marginPercent: 0 }), 'BYN', 'contractor')
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '0,00 BYN' })
+  })
+
+  it('невалидные данные с бэкенда → «—» (profit = NaN, marginPercent = Infinity)', () => {
+    const totals = makeTotals({ profit: Number.NaN, marginPercent: Number.POSITIVE_INFINITY })
+    const [, margin, third] = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(margin?.value).toBe('—')
+    expect(third?.value).toBe('—')
+  })
+
+  it('прокидывает произвольную валюту в значения', () => {
+    const [, , third] = buildHeaderMetrics(makeTotals(), 'USD', 'client')
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '13 111,00 USD' })
   })
 })
