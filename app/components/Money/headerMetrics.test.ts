@@ -37,18 +37,35 @@ describe('buildHeaderMetrics', () => {
     expect(metrics[2]?.value).toBe('13 111,00 BYN')
   })
 
-  it('ровно 3 метрики, порядок фиксирован (client и contractor)', () => {
-    expect(buildHeaderMetrics(makeTotals(), 'BYN', 'client')).toHaveLength(3)
-    expect(buildHeaderMetrics(makeTotals(), 'BYN', 'contractor')).toHaveLength(3)
+  it('НДС = 0: ровно 3 метрики, «Доход (без НДС)» скрыт (не дублирует Сумму сделки)', () => {
+    // incomeGross == incomeNet (14 496) → доход без НДС не показываем (aida#93).
+    const client = buildHeaderMetrics(makeTotals(), 'BYN', 'client')
+    const contractor = buildHeaderMetrics(makeTotals(), 'BYN', 'contractor')
+    expect(client).toHaveLength(3)
+    expect(contractor).toHaveLength(3)
+    expect(client.map(m => m.label)).not.toContain('Доход (без НДС)')
+    expect(contractor.map(m => m.label)).not.toContain('Доход (без НДС)')
   })
 
-  it('НДС > 0: прибыль отличается и от суммы сделки (с НДС), и от выручки без НДС', () => {
+  it('НДС > 0: появляется 4-я метрика «Доход (без НДС)» рядом с суммой сделки (app2#34)', () => {
     // incomeGross 17 395 (с НДС 20%), incomeNet 14 496 (без НДС), подрядчик 1 385 → profit 13 111.
-    // Три соседних числа не совпадают — метрика «Прибыль» несёт собственный смысл.
     const totals = makeTotals({ incomeGross: 17395, incomeNet: 14496, expenseTotal: 1385, profit: 13111 })
-    const [first, , third] = buildHeaderMetrics(totals, 'BYN', 'client')
-    expect(first?.value).toBe('17 395,00 BYN')
-    expect(third?.value).toBe('13 111,00 BYN')
+    const metrics = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(metrics.map(m => m.label)).toEqual([
+      'Сумма сделки', 'Доход (без НДС)', 'Маржинальность', 'Прибыль (без НДС)'
+    ])
+    expect(metrics[0]).toEqual({ label: 'Сумма сделки', value: '17 395,00 BYN' })
+    expect(metrics[1]).toEqual({ label: 'Доход (без НДС)', value: '14 496,00 BYN' })
+    expect(metrics[3]).toEqual({ label: 'Прибыль (без НДС)', value: '13 111,00 BYN' })
+  })
+
+  it('НДС > 0 в режиме contractor: тоже 4 метрики с «Доходом (без НДС)»', () => {
+    const totals = makeTotals({ incomeGross: 17395, incomeNet: 14496, expenseTotal: 1385, profit: 13111 })
+    const metrics = buildHeaderMetrics(totals, 'BYN', 'contractor')
+    expect(metrics.map(m => m.label)).toEqual([
+      'Сумма расхода', 'Доход (без НДС)', 'Маржинальность', 'Прибыль (без НДС)'
+    ])
+    expect(metrics[1]?.value).toBe('14 496,00 BYN')
   })
 
   it('убыток: подрядчик съел больше выручки → profit и маржа отрицательные', () => {
