@@ -1,0 +1,77 @@
+import { describe, it, expect } from 'vitest'
+import { buildHeaderMetrics } from './headerMetrics'
+import type { MoneyTotals } from '~/types'
+
+// Данные сделки 147 (aida#93): выручка 14 496, подрядчик 1 385, НДС = 0.
+// profit = incomeNet − expenseTotal = 14 496 − 1 385 = 13 111.
+// margin = profit / incomeNet × 100 = 90.4%.
+function makeTotals(over: Partial<MoneyTotals['plan']> = {}): MoneyTotals {
+  const plan = {
+    incomeGross: 14496,
+    incomeNet: 14496,
+    expenseTotal: 1385,
+    profit: 13111,
+    marginPercent: 90.4,
+    ...over
+  }
+  return {
+    plan,
+    fact: { incomeGross: 0, incomeNet: 0, expenseTotal: 0, profit: 0, marginPercent: 0 },
+    progress: { incomeReceivedPercent: 0, expensePaidPercent: 0 }
+  }
+}
+
+describe('buildHeaderMetrics', () => {
+  it('клиент: третья метрика — Прибыль (profit), а не Доход (incomeNet)', () => {
+    const [first, margin, third] = buildHeaderMetrics(makeTotals(), 'BYN', 'client')
+    expect(first).toEqual({ label: 'Сумма сделки', value: '14 496,00 BYN' })
+    expect(margin).toEqual({ label: 'Маржинальность', value: '90.4%' })
+    // Ключ регрессии aida#93: подрядчик (1 385) вычтен из суммы сделки → 13 111.
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '13 111,00 BYN' })
+  })
+
+  it('подрядчик: Сумма расхода / Маржинальность / Прибыль', () => {
+    const metrics = buildHeaderMetrics(makeTotals(), 'BYN', 'contractor')
+    expect(metrics.map(m => m.label)).toEqual(['Сумма расхода', 'Маржинальность', 'Прибыль (без НДС)'])
+    expect(metrics[0]).toEqual({ label: 'Сумма расхода', value: '1 385,00 BYN' })
+    expect(metrics[2]?.value).toBe('13 111,00 BYN')
+  })
+
+  it('ровно 3 метрики, порядок фиксирован (client и contractor)', () => {
+    expect(buildHeaderMetrics(makeTotals(), 'BYN', 'client')).toHaveLength(3)
+    expect(buildHeaderMetrics(makeTotals(), 'BYN', 'contractor')).toHaveLength(3)
+  })
+
+  it('НДС > 0: прибыль отличается и от суммы сделки (с НДС), и от выручки без НДС', () => {
+    // incomeGross 17 395 (с НДС 20%), incomeNet 14 496 (без НДС), подрядчик 1 385 → profit 13 111.
+    // Три соседних числа не совпадают — метрика «Прибыль» несёт собственный смысл.
+    const totals = makeTotals({ incomeGross: 17395, incomeNet: 14496, expenseTotal: 1385, profit: 13111 })
+    const [first, , third] = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(first?.value).toBe('17 395,00 BYN')
+    expect(third?.value).toBe('13 111,00 BYN')
+  })
+
+  it('убыток: подрядчик съел больше выручки → profit и маржа отрицательные', () => {
+    const totals = makeTotals({ incomeNet: 14496, expenseTotal: 14770, profit: -274, marginPercent: -1.9 })
+    const [, margin, third] = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(margin).toEqual({ label: 'Маржинальность', value: '-1.9%' })
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '-274,00 BYN' })
+  })
+
+  it('profit = 0 (подрядчик съел ровно всю выручку)', () => {
+    const [, , third] = buildHeaderMetrics(makeTotals({ profit: 0, marginPercent: 0 }), 'BYN', 'contractor')
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '0,00 BYN' })
+  })
+
+  it('невалидные данные с бэкенда → «—» (profit = NaN, marginPercent = Infinity)', () => {
+    const totals = makeTotals({ profit: Number.NaN, marginPercent: Number.POSITIVE_INFINITY })
+    const [, margin, third] = buildHeaderMetrics(totals, 'BYN', 'client')
+    expect(margin?.value).toBe('—')
+    expect(third?.value).toBe('—')
+  })
+
+  it('прокидывает произвольную валюту в значения', () => {
+    const [, , third] = buildHeaderMetrics(makeTotals(), 'USD', 'client')
+    expect(third).toEqual({ label: 'Прибыль (без НДС)', value: '13 111,00 USD' })
+  })
+})
