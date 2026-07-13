@@ -8,14 +8,37 @@ export interface HeaderMetric {
 }
 
 /**
- * Метрики шапки экрана. Все значения — плановые (`totals.plan`).
- * - Клиент (cat 2): Сумма сделки (с НДС) / Маржинальность / Прибыль (без НДС).
- * - Подрядчик (cat 3): Сумма расхода / Маржинальность / Прибыль (без НДС).
+ * НДС присутствует, если выручка с НДС (`incomeGross`) и без НДС (`incomeNet`)
+ * различаются. Сравниваем в копейках (`round(× 100)`) — деньги приходят float,
+ * прямое `!==` ловило бы артефакты. При `NaN` вернёт `true` (данные невалидны —
+ * пусть метрика покажется с `'—'`, а не молча исчезнет).
  *
- * Третья метрика — `profit` (`incomeNet − expenseTotal`), а не `incomeNet`: доход
- * без вычета расходов подрядчиков вводит в заблуждение (aida#93 — «из суммы сделки
- * не отнялась сумма по подрядчику») и дублирует «Сумму сделки» при НДС = 0. Прибыль
- * согласуется с «Маржинальностью» (та считается как `profit / incomeNet`).
+ * Почему по суммам, а не по `deal.taxRate`: цель метрики — не «есть ли ставка НДС»,
+ * а «отличается ли доход без НДС от суммы сделки визуально». При `taxRate > 0`, но
+ * копеечной сумме НДС может округлиться в 0.00 — тогда `incomeNet == incomeGross`, и
+ * показывать вторую такую же цифру незачем (ровно дублирование из aida#93). Сравнение
+ * сумм и есть прямой ответ на «дублируется ли число». `taxRate` в `buildHeaderMetrics`
+ * не прокидывается (та берёт только `totals`); единый сигнал НДС — отдельная задача.
+ */
+function hasVat(incomeGross: number, incomeNet: number): boolean {
+  return Math.round(incomeGross * 100) !== Math.round(incomeNet * 100)
+}
+
+/**
+ * Метрики шапки экрана. Все значения — плановые (`totals.plan`).
+ * - Клиент (cat 2): Сумма сделки (с НДС) / [Доход (без НДС)] / Маржинальность / Прибыль (без НДС).
+ * - Подрядчик (cat 3): Сумма расхода / [Доход (без НДС)] / Маржинальность / Прибыль (без НДС).
+ *
+ * Третья/последняя метрика — `profit` (`incomeNet − expenseTotal`), а не `incomeNet`:
+ * доход без вычета расходов подрядчиков вводит в заблуждение (aida#93 — «из суммы
+ * сделки не отнялась сумма по подрядчику»). Прибыль согласуется с «Маржинальностью»
+ * (та считается как `profit / incomeNet`).
+ *
+ * «Доход (без НДС)» (`incomeNet`) — **условная** метрика: показываем только когда НДС
+ * реально есть (`incomeNet ≠ incomeGross`, см. `hasVat`). При НДС = 0 доход равен
+ * «Сумме сделки», и его дублирование как раз и запутало пользователя в aida#93; при
+ * НДС > 0 выручка без НДС снова видна бухгалтеру (aida app2#34). Вёрстка `Header.vue`
+ * рисует метрики по массиву через `flex-wrap` — 4-й элемент встаёт без переверстки.
  *
  * В режиме `contractor` (cat 3) `profit` — прибыль самой подрядной сделки: её выручка
  * без НДС минус её собственные суб-расходы (`expenseTotal`). Если у подряда нет своих
@@ -32,17 +55,18 @@ export function buildHeaderMetrics(totals: MoneyTotals, currency: string, mode: 
   const margin: HeaderMetric = { label: 'Маржинальность', value: formatPercent(plan.marginPercent) }
   const profit: HeaderMetric = { label: 'Прибыль (без НДС)', value: formatMoney(plan.profit, currency) }
 
-  if (mode === 'contractor') {
-    return [
-      { label: 'Сумма расхода', value: formatMoney(plan.expenseTotal, currency) },
-      margin,
-      profit
-    ]
+  // Первая метрика — «валовая»: у клиента сумма сделки (с НДС), у подряда сумма расхода.
+  const gross: HeaderMetric = mode === 'contractor'
+    ? { label: 'Сумма расхода', value: formatMoney(plan.expenseTotal, currency) }
+    : { label: 'Сумма сделки', value: formatMoney(plan.incomeGross, currency) }
+
+  const metrics: HeaderMetric[] = [gross]
+
+  // Выручку без НДС показываем рядом с валовой суммой — только если НДС есть.
+  if (hasVat(plan.incomeGross, plan.incomeNet)) {
+    metrics.push({ label: 'Доход (без НДС)', value: formatMoney(plan.incomeNet, currency) })
   }
 
-  return [
-    { label: 'Сумма сделки', value: formatMoney(plan.incomeGross, currency) },
-    margin,
-    profit
-  ]
+  metrics.push(margin, profit)
+  return metrics
 }
