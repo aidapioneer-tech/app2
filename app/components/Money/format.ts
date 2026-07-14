@@ -23,6 +23,34 @@ export function formatMoney(value: number, currency = 'BYN'): string {
 }
 
 /**
+ * Подпись оригинальной суммы платежа мелким шрифтом (issue #127, ответ Q3 по #119).
+ *
+ * Возвращает отформатированную исходную сумму в исходной валюте — но ТОЛЬКО когда
+ * платёж пришёл в валюте, отличной от валюты отчёта (тогда основная цифра
+ * сконвертирована, и оригинал имеет смысл показать рядом). В остальных случаях
+ * (оригинала нет, валюта совпадает, сумма невалидна) возвращает `null` — компонент
+ * ничего не рисует.
+ *
+ * @param original - исходная сумма до конвертации (`planTotalOriginal`); `undefined`, если её нет
+ * @param currencyOriginal - исходная валюта платежа; `undefined`, если её нет
+ * @param reportCurrency - валюта отчёта, в которой показана основная цифра
+ * @returns строка вида `'1 000,00 EUR'` либо `null`
+ *
+ * @example
+ * originalMoneyLabel(1000, 'EUR', 'BYN') // '1 000,00 EUR'
+ * originalMoneyLabel(1000, 'BYN', 'BYN') // null — валюта совпадает
+ * originalMoneyLabel(undefined, 'EUR', 'BYN') // null — нет суммы
+ */
+export function originalMoneyLabel(
+  original: number | undefined,
+  currencyOriginal: string | undefined,
+  reportCurrency: string): string | null {
+  if (typeof original !== 'number') return null
+  if (!currencyOriginal || currencyOriginal === reportCurrency) return null
+  return formatMoney(original, currencyOriginal)
+}
+
+/**
  * Форматирует число как процент с одним знаком после запятой.
  *
  * @param value - значение В ПРОЦЕНТАХ (не доля): передавать `33.3`, а не `0.333`;

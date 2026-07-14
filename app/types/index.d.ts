@@ -22,6 +22,14 @@ export interface PaymentRow {
   dateDue: string | null
   dateReceived: string | null
   distributionsCount: number
+  /**
+   * Оригинальная сумма платежа ДО конвертации в валюту отчёта (issue #119/#127).
+   * Присутствует, когда валюта платежа отличается от валюты отчёта — тогда
+   * `planTotal` показан в валюте отчёта, а это — исходная цифра для мелкого шрифта.
+   */
+  planTotalOriginal?: number
+  /** Исходная валюта платежа (ISO-код) до конвертации; см. `planTotalOriginal`. */
+  currencyOriginal?: string
 }
 
 export interface DealHeader {
@@ -40,6 +48,8 @@ export interface ParentClientDeal {
   companyId: number
   companyTitle: string
   currencyId: string
+  /** Исходная валюта родительской сделки, если отличается от валюты отчёта (issue #119/#127). */
+  currencyOriginal?: string
   incomeGross: number
   incomeNet: number
   thisContractorShare: number
@@ -51,6 +61,8 @@ export interface ContractorBlock {
   companyId: number
   companyTitle: string
   currencyId: string
+  /** Исходная валюта подрядной сделки, если отличается от валюты отчёта (issue #119/#127). */
+  currencyOriginal?: string
   /** НДС-ставка сделки, % (0–100). Часть контракта бэкенда; фронт НДС не считает —
    *  planVat/planNet приходят по строкам из dealMoney.get (client-side расчёт убран, PR #38). */
   taxRate?: number
