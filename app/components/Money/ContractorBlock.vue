@@ -29,8 +29,6 @@ const status = computed<{ label: string, color: BadgeColor, accentClass: string 
   }
 })
 
-const contractorTaxRate = computed(() => props.block.taxRate ?? 0)
-
 async function openDeal() {
   if (!Number.isInteger(props.block.dealId) || props.block.dealId <= 0) return
   const $b24 = b24Instance.get()
@@ -75,7 +73,6 @@ async function openDeal() {
         <PaymentsTable
           :payments="block.payments"
           :currency="block.currencyId"
-          :tax-rate="contractorTaxRate"
         />
       </div>
     </template>

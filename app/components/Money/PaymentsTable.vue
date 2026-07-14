@@ -6,34 +6,14 @@ import { formatMoney, formatDate } from './format'
 const props = defineProps<{
   payments: PaymentRow[]
   currency: string
-  taxRate?: number
 }>()
 
-const effectiveTaxRate = computed(() => {
-  const rate = props.taxRate ?? 0
-  if (!Number.isFinite(rate) || rate < 0 || rate > 100) return 0
-  return rate
-})
+// НДС по каждому платежу (planVat/planNet) выделяет бэкенд в dealMoney.get.
+// Client-side fallback (calcPlanVat/calcPlanNet/effectiveTaxRate) убран (app2#7):
+// раньше при planVat=0 фронт досчитывал сам по taxRate сделки — временный костыль.
+// Бэкенд теперь отдаёт planVat/planNet всегда (в т.ч. 0 при ставке 0%), берём напрямую.
 
 const isEmpty = computed(() => props.payments.length === 0)
-
-function isValidAmount(v: number): boolean {
-  return Number.isFinite(v) && v > 0
-}
-
-function calcPlanVat(row: PaymentRow): number {
-  // planVat > 0 — sentinel: бэкенд уже вернул значение, используем его.
-  // Иначе вычисляем client-side. Формула НДС-включённого: planTotal × rate / (100 + rate)
-  if (row.planVat > 0) return row.planVat
-  if (!isValidAmount(row.planTotal)) return 0
-  return Math.round(row.planTotal * effectiveTaxRate.value / (100 + effectiveTaxRate.value) * 100) / 100
-}
-
-function calcPlanNet(row: PaymentRow): number {
-  if (row.planNet > 0) return row.planNet
-  if (!isValidAmount(row.planTotal)) return 0
-  return Math.round((row.planTotal - calcPlanVat(row)) * 100) / 100
-}
 
 function typeLabel(type: PaymentRow['type']): string {
   if (type === 'prepay') return 'пред-оплата'
@@ -96,10 +76,10 @@ function isOverdue(row: PaymentRow): boolean {
             </B24Badge>
           </td>
           <td class="py-2 px-2 text-right tabular-nums">
-            {{ formatMoney(calcPlanNet(row), currency) }}
+            {{ formatMoney(row.planNet, currency) }}
           </td>
           <td class="py-2 px-2 text-right tabular-nums">
-            {{ formatMoney(calcPlanVat(row), currency) }}
+            {{ formatMoney(row.planVat, currency) }}
           </td>
           <td
             class="py-2 px-2 text-right tabular-nums font-medium"
