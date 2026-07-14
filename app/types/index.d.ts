@@ -22,6 +22,14 @@ export interface PaymentRow {
   dateDue: string | null
   dateReceived: string | null
   distributionsCount: number
+  /**
+   * Оригинальная сумма платежа ДО конвертации в валюту отчёта (issue #119/#127).
+   * Присутствует, когда валюта платежа отличается от валюты отчёта — тогда
+   * `planTotal` показан в валюте отчёта, а это — исходная цифра для мелкого шрифта.
+   */
+  planTotalOriginal?: number
+  /** Исходная валюта платежа (ISO-код) до конвертации; см. `planTotalOriginal`. */
+  currencyOriginal?: string
 }
 
 export interface DealHeader {

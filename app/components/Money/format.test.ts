@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatMoney, formatPercent, formatDate } from './format'
+import { formatMoney, formatPercent, formatDate, originalMoneyLabel } from './format'
 
 describe('formatMoney', () => {
   it('форматирует дробную сумму с разделителями', () => {
@@ -95,5 +95,42 @@ describe('formatDate', () => {
   it('возвращает строку как есть, если числа однозначные', () => {
     // Требуются ровно две цифры — '2024-1-5' не матчится
     expect(formatDate('2024-1-5')).toBe('2024-1-5')
+  })
+})
+
+describe('originalMoneyLabel', () => {
+  it('показывает оригинал, когда валюта платежа отличается от валюты отчёта', () => {
+    expect(originalMoneyLabel(1000, 'EUR', 'BYN')).toBe('1 000,00 EUR')
+  })
+
+  it('возвращает null, когда валюта совпадает с валютой отчёта', () => {
+    // Платёж уже в валюте отчёта — конвертации не было, оригинал не нужен.
+    expect(originalMoneyLabel(1000, 'BYN', 'BYN')).toBeNull()
+  })
+
+  it('возвращает null, если оригинальной суммы нет', () => {
+    // Бэкенд не прислал planTotalOriginal (например, старый ответ) — не рисуем.
+    expect(originalMoneyLabel(undefined, 'EUR', 'BYN')).toBeNull()
+  })
+
+  it('возвращает null, если оригинальной валюты нет', () => {
+    expect(originalMoneyLabel(1000, undefined, 'BYN')).toBeNull()
+    expect(originalMoneyLabel(1000, '', 'BYN')).toBeNull()
+  })
+
+  it('форматирует оригинал теми же правилами, что formatMoney', () => {
+    expect(originalMoneyLabel(1234.5, 'USD', 'BYN')).toBe('1 234,50 USD')
+  })
+
+  it('возвращает null для невалидной суммы (не показываем «—» под цифрой)', () => {
+    // NaN/Infinity — грязные данные бэкенда: лучше скрыть блок, чем рисовать «—».
+    expect(originalMoneyLabel(Number.NaN, 'USD', 'BYN')).toBeNull()
+    expect(originalMoneyLabel(Number.POSITIVE_INFINITY, 'USD', 'BYN')).toBeNull()
+  })
+
+  it('показывает нулевой и отрицательный оригинал в другой валюте', () => {
+    // Ноль — валидная сумма (0 !== undefined), знак минуса (сторно) сохраняется.
+    expect(originalMoneyLabel(0, 'EUR', 'BYN')).toBe('0,00 EUR')
+    expect(originalMoneyLabel(-500.5, 'EUR', 'BYN')).toBe('-500,50 EUR')
   })
 })

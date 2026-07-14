@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PaymentRow } from '~/types'
 import { computed } from 'vue'
-import { formatMoney, formatDate } from './format'
+import { formatMoney, formatDate, originalMoneyLabel } from './format'
 
 const props = defineProps<{
   payments: PaymentRow[]
@@ -25,6 +25,15 @@ function isOverdue(row: PaymentRow): boolean {
   if (!row.dateDue || row.isFullyPaid) return false
   const today = new Date().toISOString().slice(0, 10)
   return row.leftToPay > 0 && row.dateDue < today
+}
+
+/**
+ * Оригинальная сумма платежа мелким шрифтом (issue #127, ответ Q3 по #119).
+ * Логика вынесена в чистый {@link originalMoneyLabel} (покрыта тестами);
+ * здесь только прокидываем поля строки и валюту отчёта.
+ */
+function originalTotal(row: PaymentRow): string | null {
+  return originalMoneyLabel(row.planTotalOriginal, row.currencyOriginal, props.currency)
 }
 </script>
 
@@ -86,6 +95,13 @@ function isOverdue(row: PaymentRow): boolean {
             :class="row.isFullyPaid ? 'text-(--ui-color-accent-main-success)' : ''"
           >
             {{ formatMoney(row.planTotal, currency) }}
+            <div
+              v-if="originalTotal(row)"
+              class="text-xs font-normal text-(--ui-text-muted)"
+              :title="`Оригинал платежа до конвертации в ${currency}`"
+            >
+              {{ originalTotal(row) }}
+            </div>
           </td>
           <td
             class="py-2 px-2 text-right tabular-nums"
