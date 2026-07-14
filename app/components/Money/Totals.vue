@@ -15,16 +15,16 @@ defineProps<{
         <div class="flex flex-col gap-3">
           <span class="text-xs uppercase tracking-wide text-(--ui-text-muted)">План</span>
           <div class="grid grid-cols-2 gap-y-2 text-sm">
-            <span class="text-(--ui-text-muted)">Доход (с НДС)</span>
+            <span class="text-(--ui-text-muted)">Выручка (с НДС)</span>
             <span class="text-right tabular-nums">{{ formatMoney(totals.plan.incomeGross, currency) }}</span>
 
-            <span class="text-(--ui-text-muted)">Доход (без НДС)</span>
+            <span class="text-(--ui-text-muted)">Выручка (без НДС)</span>
             <span class="text-right tabular-nums">{{ formatMoney(totals.plan.incomeNet, currency) }}</span>
 
             <span class="text-(--ui-text-muted)">Расход подряда</span>
             <span class="text-right tabular-nums">{{ formatMoney(totals.plan.expenseTotal, currency) }}</span>
 
-            <span class="font-medium">Прибыль</span>
+            <span class="font-medium">Доход (без НДС)</span>
             <span class="text-right tabular-nums font-medium">{{ formatMoney(totals.plan.profit, currency) }}</span>
 
             <span class="text-(--ui-text-muted)">Маржа</span>
@@ -44,7 +44,7 @@ defineProps<{
             <span class="text-(--ui-text-muted)">Выплачено подряду</span>
             <span class="text-right tabular-nums">{{ formatMoney(totals.fact.expenseTotal, currency) }}</span>
 
-            <span class="font-medium">Прибыль</span>
+            <span class="font-medium">Доход (без НДС)</span>
             <span class="text-right tabular-nums font-medium">{{ formatMoney(totals.fact.profit, currency) }}</span>
 
             <span class="text-(--ui-text-muted)">Маржа</span>
