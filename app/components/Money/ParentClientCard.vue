@@ -18,10 +18,10 @@ defineProps<{
       </div>
 
       <div class="grid grid-cols-2 gap-y-2 text-sm mt-2">
-        <span class="text-(--ui-text-muted)">Доход (с НДС)</span>
+        <span class="text-(--ui-text-muted)">Выручка (с НДС)</span>
         <span class="text-right tabular-nums">{{ formatMoney(parent.incomeGross, currency) }}</span>
 
-        <span class="text-(--ui-text-muted)">Доход (без НДС)</span>
+        <span class="text-(--ui-text-muted)">Выручка (без НДС)</span>
         <span class="text-right tabular-nums">{{ formatMoney(parent.incomeNet, currency) }}</span>
 
         <span class="text-(--ui-text-muted)">Доля этого подряда</span>
