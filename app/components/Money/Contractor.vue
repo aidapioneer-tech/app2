@@ -29,7 +29,6 @@ const headerMetrics = computed(() => buildHeaderMetrics(props.data.totals, curre
         <PaymentsTable
           :payments="data.payments"
           :currency="currency"
-          :tax-rate="data.deal.taxRate"
         />
       </template>
     </B24Card>

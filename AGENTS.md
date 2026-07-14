@@ -112,8 +112,8 @@ i18n/
 | # | Колонка | Источник | План/факт | Заметки |
 |---|---|---|---|---|
 | 1 | Тип | `type` | план | `prepay` / `postpay` через `paySystemId === 9` |
-| 2 | Сумма | `calcPlanNet(row)` | **план** | без НДС; если `planNet > 0` — берём из бэкенда, иначе вычисляем client-side |
-| 3 | НДС | `calcPlanVat(row)` | **план** | НДС; если `planVat > 0` — берём из бэкенда, иначе вычисляем client-side. Если `taxRate = 0` — 0 |
+| 2 | Сумма | `row.planNet` | **план** | без НДС; берём напрямую с бэкенда (`dealMoney.get`) |
+| 3 | НДС | `row.planVat` | **план** | НДС; берём напрямую с бэкенда (0 при ставке 0%) |
 | 4 | Всего | `planTotal` | план | с НДС; зелёный когда `isFullyPaid` |
 | 5 | К оплате | `leftToPay` | производное | красный когда просрочено |
 | 6 | Срок | `dateDue` | план | `Order.Payment.datePayBefore` |
@@ -127,9 +127,9 @@ i18n/
 |---|---|
 | Где считаем | Серверно, `shef.reportbuilder` (фасад над `shef.aidapioneerby`) |
 | НДС | `AData::getTaxProc()` — первый товар сделки, fallback 20 |
-| НДС fallback на фронте | `calcPlanVat/calcPlanNet` в `PaymentsTable.vue`: если бэкенд не вернул `planVat`/`planNet` (> 0), считаем client-side. Временно до [Issue #7](https://github.com/aidapioneer-tech/app2/issues/7). |
-| НДС = 0 → не выдумывать | Бизнес-правило клиента: если `taxRate = 0` или не передан — НДС = 0, не пересчитываем. |
-| taxRate цепочка | `DealHeader.taxRate` → `Client.vue` / `Contractor.vue` → `PaymentsTable`; `ContractorBlock.taxRate` → `ContractorBlock.vue` → `PaymentsTable` |
+| НДС на фронте | Берётся напрямую с бэкенда: `row.planVat` / `row.planNet` в `PaymentsTable.vue`. Client-side fallback (`calcPlanVat/calcPlanNet/effectiveTaxRate`) **убран** ([#7](https://github.com/aidapioneer-tech/app2/issues/7)) — `dealMoney.get` отдаёт НДС по строкам всегда (проверено на портале: сделка 147). |
+| НДС = 0 → не выдумывать | Бизнес-правило клиента: если ставка 0 — НДС = 0. Считает бэкенд (`AData::getTaxProc`); фронт своей ставки больше не держит. |
+| ~~taxRate цепочка~~ | Убрана вместе с fallback: prop `taxRate` больше не пробрасывается в `PaymentsTable` (был `DealHeader.taxRate`/`ContractorBlock.taxRate` → `PaymentsTable`). Поля типов остаются — их шлёт бэкенд. |
 | Навигация к подряду | `ContractorBlock.vue → openDeal()` → `$b24.slider.openPath($b24.slider.getUrl("/crm/deal/details/{id}/"))` |
 | Шапка (Header) | Presentation-only: получает `title/subtitle/metrics[]`. Метрики формирует `headerMetrics.ts → buildHeaderMetrics(totals, currency, mode)` (единая точка правды). Клиент: Сумма сделки (с НДС) / [Доход (без НДС)] / Маржинальность / **Прибыль (без НДС)**. Подрядчик: Сумма расхода / [Доход (без НДС)] / Маржинальность / **Прибыль (без НДС)**. Всё `totals.plan`. Последняя метрика — `profit` (`incomeNet − expenseTotal`), **не** `incomeNet`: доход без вычета подрядчиков вводит в заблуждение ([aida#93](https://github.com/aidapioneer-tech/aida/issues/93)); прибыль согласуется с маржой (`profit / incomeNet`). «Доход (без НДС)» (`incomeNet`) — **условная** метрика (`hasVat`: `incomeNet ≠ incomeGross`): при НДС = 0 скрыта (дублировала бы «Сумму сделки» — причина #93), при НДС > 0 показывается ([app2#34](https://github.com/aidapioneer-tech/app2/issues/34)). `Header.vue` рисует по массиву через `flex-wrap` — 4-й элемент без переверстки. Покрыто `headerMetrics.test.ts`. Без разделения план/факт, без прогресс-бара. |
 | Кнопка «Обновить» | Контракт через provide/inject (`refresh.ts → moneyRefreshKey`). `index.vue` отдаёт `reloadAll` + `busy` (обёртка над `loading`); `Header.vue` инжектит и рисует `B24Button` (`:loading`+`:disabled` от busy). Повторный запрос не сбрасывает экран в скелетон (`v-if="loading && !data"` в `index.vue`). |
@@ -210,7 +210,7 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 4. ~~**`useDealMoney.ts` обработка errors**~~ — ✅ закрыто (PR #29): миграция на `actions.v2.call.make` + проверка `response.isSuccess` + `getErrorMessages()`; `getData()?.result` с guard на пустой результат. Покрыто тестами `useDealMoney.test.ts`.
 5. **`isOverdue` в PaymentsTable.vue** считает `today.toISOString()` в локальной зоне — для пограничных случаев в timezone ≠ UTC может ошибаться на день.
 6. **Currency mismatch** — клиент BYN, подрядчик в USD/EUR/RUB? Сейчас totals считаются арифметически без конверсии. `AData::getPaymentsSum` имеет конверсию через `CCurrencyRates::ConvertCurrency`, но `buildPaymentRows` в новом controller — нет. Проверить и при необходимости добавить.
-7. **НДС fallback** — `calcPlanVat`/`calcPlanNet` в `PaymentsTable.vue` считают client-side пока бэкенд не возвращает `planVat`/`planNet`. Убрать client-side логику после закрытия [Issue #7](https://github.com/aidapioneer-tech/app2/issues/7).
+7. ~~**НДС fallback** — `calcPlanVat`/`calcPlanNet` в `PaymentsTable.vue` считают client-side.~~ ✅ **Убрано** (app2 PR #38): бэкенд `dealMoney.get` отдаёт `planVat`/`planNet` по строкам всегда, фронт берёт напрямую ([Issue #7](https://github.com/aidapioneer-tech/app2/issues/7)).
 
 ## Конвенции проекта
 
@@ -220,7 +220,7 @@ NUXT_APP_BASE_URL=/money-info-a4f7
 - **TS/Vue**: Composition API, `<script setup lang="ts">`. Без emoji в UI. Числа форматировать через `formatMoney` (split + space-separator). Без `replace('белорусских рублей', 'бел. руб')` костыля.
 - **REST-вызовы**: `b24.actions.v2.call.make<T>({ method, params })` (restApi:v2) — актуальный API. `b24.callMethod()` помечен `@deprecated`, удаляется в 2.0.0. Проверять `response.isSuccess`, данные брать из `response.getData()?.result`.
 - **Импорты типов** (из b24ui): `import type { X }` — отдельной строкой от рантайм-импортов. Так уже написаны компоненты Money/*.
-- **Дефолты пропсов** (из b24ui): для опциональных пропсов с рантайм-значением — `withDefaults()`; для документации значения — JSDoc `@defaultValue`. (Прим.: `effectiveTaxRate` сейчас нормализует `taxRate?` вручную — при рефакторе можно перейти на `withDefaults`.)
+- **Дефолты пропсов** (из b24ui): для опциональных пропсов с рантайм-значением — `withDefaults()`; для документации значения — JSDoc `@defaultValue`.
 - **Конвенциональные коммиты** (из b24ui): `type(Scope): описание` — `feat(money): …`, `fix(Header): …`, `refactor(backend): …`. Скоуп — модуль/компонент.
 - **Доступность (a11y)**: интерактив — на нативных элементах (`<button type="button">`, не клики на `<div>`); сохранять видимый фокус. Образцы — кнопка «Обновить» в `Header.vue`, ссылка на сделку в `ContractorBlock.vue`.
 - **i18n**: только `ru`. Все тексты в шаблонах захардкожены — i18n-ключи можно не использовать.
@@ -281,7 +281,7 @@ BX24.callMethod('shef:reportbuilder.api.dealMoney.get', { dealId: 12345 }, r => 
 - Не возвращать колонку «По документам» — это рудимент старого мокапа.
 - Не возвращать левое меню / сайдбар.
 - Не делать переключатель языка / dark-mode / settings — экран одностраничный.
-- Не дублировать формулы **прибыли** в TS — всё считает сервер. (Исключение: НДС-fallback в `PaymentsTable.vue` — временная мера, убрать после Issue #7.)
+- Не дублировать формулы **прибыли/НДС** в TS — всё считает сервер (`dealMoney.get` отдаёт `planVat`/`planNet`/`profit`/`marginPercent`). Client-side fallback НДС убран (PR #38).
 - Не выдумывать НДС: если `taxRate = 0` или не передан — НДС = 0. Бизнес-правило клиента, подтверждено в issue #1.
 - Не звать `crm.item.payment.list` / `crm.item.list(1044)` напрямую с фронта — есть один эндпоинт.
 - Не возвращать mock/демо-режим в `install.vue` (конвенция вендора).

@@ -51,7 +51,8 @@ export interface ContractorBlock {
   companyId: number
   companyTitle: string
   currencyId: string
-  /** НДС-ставка сделки, %. Диапазон 0–100. Отсутствие поля = НДС не указан → расчёт не производится. */
+  /** НДС-ставка сделки, % (0–100). Часть контракта бэкенда; фронт НДС не считает —
+   *  planVat/planNet приходят по строкам из dealMoney.get (client-side расчёт убран, PR #38). */
   taxRate?: number
   badge: ContractorBadge
   payments: PaymentRow[]
