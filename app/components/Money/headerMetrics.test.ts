@@ -72,6 +72,8 @@ describe('buildHeaderMetrics', () => {
   })
 
   it('невалидные profit/marginPercent с бэкенда → «—» (NaN / Infinity)', () => {
+    // «Доход (без НДС)» читает только profit; NaN у incomeNet/incomeGross на неё
+    // больше не влияет (условная ветка hasVat, читавшая incomeNet, удалена, aida#118).
     const totals = makeTotals({ profit: Number.NaN, marginPercent: Number.POSITIVE_INFINITY })
     const metrics = buildHeaderMetrics(totals, 'BYN', 'client')
     expect(value(metrics, 'Маржинальность')).toBe('—')
