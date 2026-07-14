@@ -48,8 +48,6 @@ export interface ParentClientDeal {
   companyId: number
   companyTitle: string
   currencyId: string
-  /** Исходная валюта родительской сделки, если отличается от валюты отчёта (issue #119/#127). */
-  currencyOriginal?: string
   incomeGross: number
   incomeNet: number
   thisContractorShare: number
@@ -61,8 +59,6 @@ export interface ContractorBlock {
   companyId: number
   companyTitle: string
   currencyId: string
-  /** Исходная валюта подрядной сделки, если отличается от валюты отчёта (issue #119/#127). */
-  currencyOriginal?: string
   /** НДС-ставка сделки, % (0–100). Часть контракта бэкенда; фронт НДС не считает —
    *  planVat/planNet приходят по строкам из dealMoney.get (client-side расчёт убран, PR #38). */
   taxRate?: number

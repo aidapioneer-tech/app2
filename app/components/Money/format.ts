@@ -45,9 +45,9 @@ export function originalMoneyLabel(
   original: number | undefined,
   currencyOriginal: string | undefined,
   reportCurrency: string): string | null {
-  if (typeof original !== 'number') return null
+  if (!Number.isFinite(original)) return null
   if (!currencyOriginal || currencyOriginal === reportCurrency) return null
-  return formatMoney(original, currencyOriginal)
+  return formatMoney(original as number, currencyOriginal)
 }
 
 /**

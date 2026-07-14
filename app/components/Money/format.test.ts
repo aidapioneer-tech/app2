@@ -120,7 +120,17 @@ describe('originalMoneyLabel', () => {
 
   it('форматирует оригинал теми же правилами, что formatMoney', () => {
     expect(originalMoneyLabel(1234.5, 'USD', 'BYN')).toBe('1 234,50 USD')
-    // Невалидная сумма → formatMoney даёт «—», но валюты различны, так что строка возвращается.
-    expect(originalMoneyLabel(Number.NaN, 'USD', 'BYN')).toBe('—')
+  })
+
+  it('возвращает null для невалидной суммы (не показываем «—» под цифрой)', () => {
+    // NaN/Infinity — грязные данные бэкенда: лучше скрыть блок, чем рисовать «—».
+    expect(originalMoneyLabel(Number.NaN, 'USD', 'BYN')).toBeNull()
+    expect(originalMoneyLabel(Number.POSITIVE_INFINITY, 'USD', 'BYN')).toBeNull()
+  })
+
+  it('показывает нулевой и отрицательный оригинал в другой валюте', () => {
+    // Ноль — валидная сумма (0 !== undefined), знак минуса (сторно) сохраняется.
+    expect(originalMoneyLabel(0, 'EUR', 'BYN')).toBe('0,00 EUR')
+    expect(originalMoneyLabel(-500.5, 'EUR', 'BYN')).toBe('-500,50 EUR')
   })
 })
